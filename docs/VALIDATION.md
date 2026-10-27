@@ -23,3 +23,11 @@ ESP-IDF 官方完整 v5.4.1 SDK 与推荐 esp-14.2.0_20241119 工具链；完整
 Starlette TestClient 存在 httpx 兼容接口弃用提示；当前检查 exit 0。SQLite 持久化与未连接 MQTT 日志是本地隔离运行的预期提示，不表示已部署。
 
 日志位于 validation/20261027/。构建完整日志保留于本机任务临时目录；仓库只附末段构建结果。没有将手机/Broker/MySQL 实库/实机/OTA/8 小时验证标为通过。数据准确率、物理安全与真实使用效果仍待验收。
+
+## 私有仓库上传后的跨平台补充
+
+GitHub 私有仓库：https://github.com/Evan0825/feldspar 。上述记录是初次本地整理时的验证快照，PDF 保留该历史阶段。后续远端自动检查以 GitHub Actions 对应提交为准，不再将“远端未运行”作为当前状态。
+
+首次 Ubuntu / Python 3.12 / Node 22 检查在严格 C11 编译音效模块时失败：M_PI 不是 C11 标准常量，Linux 头文件未定义它。保留原有主机检查作为回归，在音效生成表达式中改用数值等同的 float 圆周率字面量；不改变音效频率或控制逻辑。修复后本机 C 7 组与 Node 25 项检查通过。固件默认配置目标构建通过（1,600,464 字节，未烧录）；补充日志见 validation/20261027/upload-host-tests.log 与 target-upload-default-summary.log。远端完整检查结果见仓库 Actions。
+
+未因此扩大到实机、Broker/MySQL、数据有效性或物理安全验证。

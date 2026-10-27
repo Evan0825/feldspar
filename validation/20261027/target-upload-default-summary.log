@@ -1,0 +1,23 @@
+Files/__idf_mqtt_mgr.dir/mqtt_mgr.c.obj
+[1378/1391] Building C object esp-idf/device_link/CMakeFiles/__idf_device_link.dir/device_link.c.obj
+[1379/1391] Linking C static library esp-idf/sfx/libsfx.a
+[1380/1391] Linking C static library esp-idf/mqtt_mgr/libmqtt_mgr.a
+[1381/1391] Linking C static library esp-idf/device_control/libdevice_control.a
+[1382/1391] Linking C static library esp-idf/ota_mgr/libota_mgr.a
+[1383/1391] Linking C static library esp-idf/device_link/libdevice_link.a
+[1384/1391] Building C object esp-idf/ble/CMakeFiles/__idf_ble.dir/ble.c.obj
+[1385/1391] Linking C static library esp-idf/ble/libble.a
+[1386/1391] Linking C static library esp-idf/main/libmain.a
+[1387/1391] Generating ld/sections.ld
+[1388/1391] Building C object CMakeFiles/haomian.elf.dir/project_elf_src_esp32s3.c.obj
+[1389/1391] Linking CXX executable haomian.elf
+[1390/1391] Generating binary image from built executable
+esptool.py v4.12.0
+Creating esp32s3 image...
+Merged 2 ELF sections
+Successfully created esp32s3 image.
+Generated [workspace]/.codex_tmp/oa2026-preparation/build-upload-default/haomian.bin
+[1391/1391] cd [workspace]/.codex_tmp/oa2026-preparation/build-upload-default/esp-idf/esptool_py && [workspace]/.codex_tmp/esp-idf-5.4.1/idf-env/bin/python [workspace]/.codex_tmp/esp-idf-5.4.1/sdk/esp-idf-v5.4.1/components/partition_table/check_sizes.py --offset 0x8000 partition --type app [workspace]/.codex_tmp/oa2026-preparation/build-upload-default/partition_table/partition-table.bin [workspace]/.codex_tmp/oa2026-preparation/build-upload-default/haomian.bin
+haomian.bin binary size 0x186bd0 bytes. Smallest app partition is 0x200000 bytes. 0x79430 bytes (24%) free.
+
+Project build complete

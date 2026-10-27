@@ -554,7 +554,7 @@ static esp_err_t ensure_test_file(void)
             } else {
                 seg = 2; off = s - BEEP * 2 - GAP * 2;
             }
-            float v = sinf(2.0f * (float)M_PI * FREQ[seg] * off / RATE) * 11000.0f;
+            float v = sinf(2.0f * 3.14159265358979323846f * FREQ[seg] * off / RATE) * 11000.0f;
             if (off < FADE) v *= (float)off / FADE;
             else if (off > BEEP - FADE) v *= (float)(BEEP - off) / FADE;
             buf[i] = (int16_t)v;
