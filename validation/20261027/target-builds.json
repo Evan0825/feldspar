@@ -1,0 +1,14 @@
+[
+  {
+    "mode": "default",
+    "bytes": 1600464,
+    "sha256": "8737e3ef0580c4fadfcd41a96ac5f8074d6bf2844672f2b451e5522c3729bd3e",
+    "flashed": false
+  },
+  {
+    "mode": "features",
+    "bytes": 1600848,
+    "sha256": "8ea09fd3c9853db6a31fcb0353ea32ae19f48bec981e08c274162caee2c7ca62",
+    "flashed": false
+  }
+]

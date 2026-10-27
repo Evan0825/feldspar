@@ -1,0 +1,74 @@
+<view class="page setup-page">
+  <view class="connection-stage" wx:if="{{machine.step === 'idle' || machine.step === 'searching' || machine.step === 'found' || machine.step === 'connecting'}}">
+    <view class="page-title">连接月石</view>
+    <view class="page-lead">{{machine.step === 'connecting' ? '已发现设备，正在自动建立蓝牙连接' : '请靠近设备并确认主机已通电'}}</view>
+    <image class="product-hero" src="/images/system-compact.png" mode="aspectFit" />
+
+    <view class="device-row">
+      <view class="status-dot {{machine.step === 'found' || machine.step === 'connecting' ? '' : 'warning'}}"></view>
+      <view class="device-main">
+        <text class="device-name">{{machine.device ? machine.device.name : '正在寻找月石'}}</text>
+        <text class="device-meta" wx:if="{{machine.step === 'connecting'}}">连接中</text>
+        <text class="device-meta" wx:elif="{{machine.step === 'found'}}">已发现</text>
+        <text class="device-meta" wx:else>请稍候</text>
+      </view>
+    </view>
+
+    <button hover-class="none" class="primary-button bluetooth-button" wx:if="{{machine.step === 'found'}}" bindtap="connect">立即连接</button>
+    <button hover-class="none" class="primary-button bluetooth-button" wx:elif="{{machine.step === 'connecting'}}" loading="{{true}}" disabled="{{true}}">自动连接中</button>
+    <text class="identity-note">按 BLE_PROTOCOL v1.1 校验 0xFF00 服务、0xFF01-0xFF04 控制通道及 0xFF05 安全配网能力</text>
+  </view>
+
+  <view class="network-stage" wx:if="{{machine.step === 'connected' || machine.step === 'provisioning'}}">
+    <view class="page-title">连接家庭网络</view>
+    <view class="page-lead">由月石扫描附近 2.4GHz Wi-Fi，连接后即可同步睡眠事件与云端设置。</view>
+
+    <view class="ble-mini-card">
+      <view><view class="status-dot"></view><text>蓝牙已连接</text></view>
+      <button hover-class="none" size="mini" bindtap="reconnectBle">重新连接</button>
+    </view>
+
+    <view class="wifi-heading"><text>附近 Wi-Fi</text><button hover-class="none" size="mini" loading="{{wifiScanning}}" disabled="{{wifiScanning || wifiConnecting}}" bindtap="scanWifiNetworks">重新扫描</button></view>
+    <text class="wifi-source" wx:if="{{wifiScanSource}}">{{wifiScanSource === 'device' ? '由月石设备扫描' : '由当前手机扫描'}}</text>
+    <view class="wifi-list" wx:if="{{wifiNetworks.length}}">
+      <view class="wifi-row {{selectedSsid === item.ssid ? 'selected' : ''}}" wx:for="{{wifiNetworks}}" wx:key="ssid" data-ssid="{{item.ssid}}" bindtap="selectWifi">
+        <view><text class="wifi-name">{{item.ssid}}</text><text class="wifi-meta">{{item.secure ? '需要密码' : '开放网络'}} · {{item.signalText}}</text></view>
+        <text class="wifi-check">{{selectedSsid === item.ssid ? '✓' : ''}}</text>
+      </view>
+    </view>
+    <view class="wifi-empty" wx:elif="{{wifiScanning}}">月石正在扫描附近网络…</view>
+
+    <text class="field-label">Wi-Fi 名称</text>
+    <input class="input" maxlength="32" value="{{selectedSsid}}" disabled="{{wifiConnecting}}" placeholder="选择上方网络或手动输入" bindinput="inputWifiName" />
+    <view class="password-heading"><text class="field-label">Wi-Fi 密码</text><text bindtap="toggleWifiPassword">{{showWifiPassword ? '隐藏' : '显示'}}</text></view>
+    <input wx:if="{{!showWifiPassword}}" class="input" maxlength="63" password="{{true}}" value="{{wifiPassword}}" disabled="{{wifiConnecting}}" placeholder="开放网络可留空" bindinput="inputWifiPassword" />
+    <input wx:else class="input" maxlength="63" password="{{false}}" value="{{wifiPassword}}" disabled="{{wifiConnecting}}" placeholder="开放网络可留空" bindinput="inputWifiPassword" />
+
+    <view class="wifi-progress" wx:if="{{wifiConnecting}}">
+      <view class="wifi-progress-bar"><view style="width: {{wifiProgress}}%;"></view></view>
+      <text>正在安全发送并等待设备联网 · {{wifiProgress}}%</text>
+    </view>
+    <view class="wifi-notice" wx:if="{{wifiNotice}}"><text>{{wifiNotice}}</text><button hover-class="none" size="mini" bindtap="refreshWifiCapability" disabled="{{wifiScanning || wifiConnecting}}">重新读取设备能力</button></view>
+    <text class="wifi-error" wx:if="{{wifiError}}">{{wifiError}}</text>
+    <button hover-class="none" class="primary-button network-button" loading="{{wifiConnecting}}" disabled="{{wifiConnecting || !selectedSsid || wifiProvisionSupported === false}}" bindtap="submitWifi">{{wifiProvisionSupported === false ? '需先升级硬件固件' : '连接 Wi-Fi'}}</button>
+    <text class="identity-note">密码仅在当前页面内存中使用，通过加密 BLE 特征发送，不会保存到小程序或上传业务后端。</text>
+  </view>
+
+  <view class="result-stage" wx:if="{{machine.step === 'failed'}}">
+    <view class="page-title">未能连接</view>
+    <view class="page-lead">{{errorMessage}}</view>
+    <image class="product-result" src="/images/system-compact.png" mode="aspectFit" />
+    <button hover-class="none" class="primary-button" wx:if="{{errorAction === 'reauth'}}" bindtap="recoverAuth">重新登录</button>
+    <button hover-class="none" class="primary-button" wx:elif="{{errorAction === 'settings'}}" bindtap="openPermissionSettings">打开权限设置</button>
+    <button hover-class="none" class="primary-button" wx:else bindtap="retry">重试</button>
+    <button hover-class="none" wx:if="{{demoMode}}" class="primary-button demo-skip-button" bindtap="skipToHome">进入模拟演示</button>
+  </view>
+
+  <view class="result-stage" wx:if="{{machine.step === 'success'}}">
+    <view class="page-title">连接完成</view>
+    <view class="page-lead">{{machine.device ? machine.device.name : 'SNOOZ'}} 已连接</view>
+    <text class="identity-note">{{scanFeedback}}</text>
+    <image class="product-result" src="/images/system-compact.png" mode="aspectFit" />
+    <button hover-class="none" class="primary-button" bindtap="finish">检查放置</button>
+  </view>
+</view>

@@ -1,0 +1,116 @@
+page {
+  min-height: 100%;
+  background: #f6f0e7;
+  color: #2f2923;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+}
+
+view, text, button, input, slider, switch, image {
+  box-sizing: border-box;
+}
+
+button::after { border: 0; }
+
+.page {
+  min-height: 100vh;
+  padding: 32rpx 32rpx 48rpx;
+}
+
+.brand {
+  color: #2f2923;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 31rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+
+.page-title {
+  margin-top: 18rpx;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 48rpx;
+  font-weight: 600;
+}
+
+.page-lead {
+  margin-top: 12rpx;
+  color: #675d53;
+  font-size: 26rpx;
+  line-height: 1.7;
+}
+
+.card {
+  margin-top: 20rpx;
+  padding: 28rpx;
+  border: 1rpx solid rgba(137, 111, 82, .10);
+  border-radius: 32rpx;
+  background: rgba(255, 250, 242, .92);
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 92rpx;
+  padding: 0 32rpx;
+  border-radius: 26rpx;
+  font-size: 29rpx;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 1rpx;
+}
+
+.primary-button { background: #c97810; color: #fff; }
+.secondary-button { background: #f2dfc2; color: #4c382c; }
+.danger-button { background: #f5e4dc; color: #a45237; }
+.primary-button[disabled] { background: #d6cbbd; color: #675d53; }
+
+.section-title {
+  margin: 34rpx 4rpx 12rpx;
+  color: #4c382c;
+  font-size: 25rpx;
+  font-weight: 700;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.status-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #536c2d;
+}
+
+.status-dot.offline { background: #a89c90; }
+.status-dot.warning { background: #d28b2d; }
+
+.safe-note {
+  margin-top: 24rpx;
+  padding: 22rpx 24rpx;
+  border-left: 5rpx solid #d28b2d;
+  border-radius: 6rpx 20rpx 20rpx 6rpx;
+  background: rgba(210, 139, 45, .08);
+  color: #675d53;
+  font-size: 24rpx;
+  line-height: 1.65;
+}
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.chip {
+  padding: 16rpx 24rpx;
+  border: 1rpx solid #e2d5c3;
+  border-radius: 999rpx;
+  background: #fffaf2;
+  color: #675d53;
+  font-size: 24rpx;
+}
+.chip.active { border-color: #d28b2d; background: #f2dfc2; color: #a76522; }
+
+.empty-state { padding: 90rpx 36rpx; color: #675d53; text-align: center; font-size: 24rpx; line-height: 1.7; }

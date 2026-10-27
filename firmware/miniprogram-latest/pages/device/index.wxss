@@ -1,0 +1,28 @@
+.device-page { padding-top: 40rpx; }
+.state-card { margin-top: 24rpx; padding: 28rpx; border-radius: 28rpx; background: #fffaf2; text-align: center; }
+.state-card text { display: block; }
+.state-title { font-weight: 700; }
+.state-copy { margin-top: 8rpx; color: #675d53; font-size: 21rpx; }
+.device-hero { display: flex; align-items: center; gap: 28rpx; min-height: 190rpx; margin-top: 36rpx; padding: 24rpx; }
+.device-image { width: 190rpx; height: 148rpx; flex: 0 0 auto; border-radius: 22rpx; }
+.device-hero text { display: block; }
+.device-name { font-size: 29rpx; font-weight: 700; }
+.device-name + text { margin-top: 8rpx; color: #675d53; font-size: 20rpx; }
+.online-copy { display: inline-flex; margin-top: 12rpx; padding: 8rpx 14rpx; border-radius: 999rpx; background: rgba(83,108,45,.10); color: #536c2d; font-size: 22rpx; font-weight: 600; }
+.reconnect-card { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-bottom: 18rpx; padding: 24rpx 26rpx; }
+.reconnect-card > view { flex: 1; }
+.reconnect-card text { display: block; }
+.reconnect-title { color: #2f2923; font-size: 25rpx; font-weight: 650; }
+.reconnect-copy { margin-top: 7rpx; color: #675d53; font-size: 20rpx; line-height: 1.45; }
+.reconnect-card button { margin: 0; color: #a76522; background: rgba(210,139,45,.10); font-size: 21rpx; }
+.reconnect-error { display: block; margin: -6rpx 0 18rpx; color: #a45237; font-size: 21rpx; }
+.detail-list { padding-top: 6rpx; padding-bottom: 6rpx; }
+.detail-row { display: flex; align-items: center; justify-content: space-between; gap: 22rpx; padding: 24rpx 0; border-bottom: 1rpx solid #eee4d7; }
+.detail-row:last-child { border-bottom: 0; }
+.detail-row view { flex: 1; }
+.detail-row view text { display: block; }
+.detail-row view text:first-child { font-weight: 650; }
+.detail-row view text:last-child { margin-top: 7rpx; color: #675d53; font-size: 20rpx; }
+.value { color: #675d53; font-size: 21rpx; }
+.value.ok { color: #536c2d; font-weight: 600; }
+.value.warn { color: #a76522; }

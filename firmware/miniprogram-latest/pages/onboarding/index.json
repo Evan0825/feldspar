@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "SnoozMate",
+  "usingComponents": {
+    "state-banner": "/components/state-banner/index"
+  }
+}

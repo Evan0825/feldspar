@@ -1,0 +1,40 @@
+Microphone conversion boundaries passed (host only).
+Actuation guard and short/long button checks passed (host only).
+ESP adapter timer, stop, persistence and failure checks passed (stub peripherals).
+Versioned acoustic feature quality and context checks passed (host only).
+MQTT command fragmentation, topic and retained-message checks passed (host only).
+Device-link JSON, command/ACK, clock and opt-in checks passed (stub transport).
+SFX stop cancels queued/dequeued jobs and preserves explicit switching (host files only).
+✔ current firmware scans over FF01 0x44 without FF05; comma/UTF8 SSID and dedup (185.038416ms)
+✔ empty scan succeeds and scan failure is reported (363.082167ms)
+✔ future FF05 protocol retains 0x40/base64 scan behavior (0.903667ms)
+✔ current firmware WiFi status uses query 0x42, never forget 0x43 (181.336833ms)
+✔ only undecodable AP records with nonempty scan count fail instead of showing empty success (181.738209ms)
+✔ stop page waits for confirmed service result and never toasts success on failure (3.582416ms)
+✔ sound page keeps last known output until readback and retains sync-pending result (3.32775ms)
+✔ BLE safety controls remain reachable during cloud network failure (6.085292ms)
+✔ stale sensor data does not show ready or an active local loop (0.701375ms)
+✔ cloud authorization failures are not converted to successful device status (1.195625ms)
+✔ local stop latch takes precedence over a fresh cloud snapshot (0.876417ms)
+✔ offline controls show driver readback and keep confirmed changes pending cloud sync (1.465709ms)
+✔ cloud preferences do not bypass authorization via BLE (0.650625ms)
+✔ remote global stop needs explicit applied readback; queued alone is not confirmation (0.4885ms)
+✔ remote unsupported settings report an explicit limitation (0.915458ms)
+✔ light command respects the control range and requires matching IO readback (1055.443083ms)
+✔ sound volume needs readback; unsupported timer or missing scene is not success (1050.359166ms)
+✔ active app command numbers match imported firmware header (2.57725ms)
+✔ WiFi config lengths are UTF8 bytes, with bounded SSID/password (0.798042ms)
+✔ partial report does not invent posture, response, quality, duration or assessment (4.736917ms)
+✔ explicit zero observations remain zero and empty reports remain empty (1.956667ms)
+✔ safety requests ignore stale tokens and confirm actual readback (184.39725ms)
+✔ resume needs a cleared latch and stopping needs an inactive latched readback (363.812333ms)
+✔ safety readback requires matching request and valid driver state (0.438416ms)
+✔ IO readback keeps light, volume and play state distinct (0.45625ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5168.760584

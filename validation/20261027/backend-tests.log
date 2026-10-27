@@ -1,0 +1,28 @@
+[workspace]/.codex_tmp/oa2026-preparation/backend-env/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_deadline_is_checked_before_low_confidence_early_return (test_completion_regressions.StopRegressions.test_deadline_is_checked_before_low_confidence_early_return) ... ok
+test_last_allowed_round_can_finish_verification (test_completion_regressions.StopRegressions.test_last_allowed_round_can_finish_verification) ... ok
+test_last_allowed_round_runs_to_deadline_then_stops (test_completion_regressions.StopRegressions.test_last_allowed_round_runs_to_deadline_then_stops) ... ok
+test_non_actuation_result_cannot_leave_reference_output_running (test_completion_regressions.StopRegressions.test_non_actuation_result_cannot_leave_reference_output_running) ... ok
+test_zero_budget_never_starts (test_completion_regressions.StopRegressions.test_zero_budget_never_starts) ... ok
+test_cloud_gate_requires_verified_guard_and_an_explicit_clear_stop (test_completion_regressions.UnknownObservationRegressions.test_cloud_gate_requires_verified_guard_and_an_explicit_clear_stop) ... ok
+test_direct_and_batch_database_writes_preserve_unknown (test_completion_regressions.UnknownObservationRegressions.test_direct_and_batch_database_writes_preserve_unknown) ... ok
+test_legacy_sqlite_defaults_do_not_invent_new_observations (test_completion_regressions.UnknownObservationRegressions.test_legacy_sqlite_defaults_do_not_invent_new_observations) ... ok
+test_mqtt_observation_requires_ready_radar_for_presence_and_motion (test_completion_regressions.UnknownObservationRegressions.test_mqtt_observation_requires_ready_radar_for_presence_and_motion) ... ok
+test_mysql_nullable_migration_is_conditional (test_completion_regressions.UnknownObservationRegressions.test_mysql_nullable_migration_is_conditional) ... ok
+test_runtime_snapshot_defaults_do_not_invent_sensor_readings (test_completion_regressions.UnknownObservationRegressions.test_runtime_snapshot_defaults_do_not_invent_sensor_readings) ... ok
+test_schema_distinguishes_unknown_from_false_and_zero (test_completion_regressions.UnknownObservationRegressions.test_schema_distinguishes_unknown_from_false_and_zero) ... ok
+test_single_and_batch_api_roundtrip (test_completion_regressions.UnknownObservationRegressions.test_single_and_batch_api_roundtrip) ... ok
+test_bad_or_clockless_input_never_becomes_normal (test_feature_contract.FeatureContractTests.test_bad_or_clockless_input_never_becomes_normal) ... ok
+test_c_frontend_matches_numpy_reference (test_feature_contract.FeatureContractTests.test_c_frontend_matches_numpy_reference) ... ok
+test_continuity_quality_duplicate_and_session_boundaries (test_feature_contract.FeatureContractTests.test_continuity_quality_duplicate_and_session_boundaries) ... ok
+test_actual_c_wire_packet_is_accepted_by_http_and_sqlite (test_feature_contract.FeatureIngressTests.test_actual_c_wire_packet_is_accepted_by_http_and_sqlite) ... ok
+test_global_stop_endpoint_is_idempotent_and_write_authorized (test_feature_contract.FeatureIngressTests.test_global_stop_endpoint_is_idempotent_and_write_authorized) ... ok
+test_http_feature_ingress_and_readback_keep_auth_boundaries (test_feature_contract.FeatureIngressTests.test_http_feature_ingress_and_readback_keep_auth_boundaries) ... ok
+test_mqtt_keeps_only_latest_window_without_fabricating_report_or_runtime (test_feature_contract.FeatureIngressTests.test_mqtt_keeps_only_latest_window_without_fabricating_report_or_runtime) ... ok
+test_pending_global_stop_is_prioritized_retried_and_requires_readback (test_feature_contract.FeatureIngressTests.test_pending_global_stop_is_prioritized_retried_and_requires_readback) ... ok
+
+----------------------------------------------------------------------
+Ran 21 tests in 9.392s
+
+OK

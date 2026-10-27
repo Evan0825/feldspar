@@ -1,0 +1,12 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+# 好眠 dual-OTA 布局（8MB 内部 Flash）
+#  - otadata: 记录当前启动槽与 PENDING_VERIFY 状态，是 bootloader 回滚的基础
+#  - ota_0 / ota_1 各 2MB：当前镜像 ~1.34MB，单槽余量充足
+#  - coredump 64KB：崩溃现场落盘，供回滚原因分析
+#  - 0x430000-0x800000 (约 3.8MB) 预留：未来扩展 fatfs/spiffs / 更大镜像
+nvs,      data, nvs,     0x9000,  0x5000,
+phy_init, data, phy,     0xf000,  0x1000,
+otadata,  data, ota,     0x10000, 0x2000,
+ota_0,    app,  ota_0,   0x20000, 0x200000,
+ota_1,    app,  ota_1,   0x220000, 0x200000,
+coredump, data, coredump,0x420000, 0x10000,

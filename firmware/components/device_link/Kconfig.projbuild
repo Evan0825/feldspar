@@ -1,0 +1,10 @@
+menu "Feldspar structured observation link"
+config FELDSPAR_FEATURE_LINK
+    bool "Enable feature uplink and bounded command receiver"
+    default n
+    help
+        Requires a device-specific device_link NVS profile: device_id,
+        device_key and mqtts broker_uri. Never falls back to the legacy
+        service account. Sends structured DSP features, not raw recordings.
+        Automatic actuation remains disabled pending physical validation.
+endmenu

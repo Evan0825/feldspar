@@ -1,0 +1,48 @@
+<view class="page live-page">
+  <view class="brand">实时守护</view>
+  <view class="freshness" wx:if="{{snapshot}}"><view class="status-dot {{snapshot.freshness === 'fresh' && snapshot.source === 'device-runtime' ? '' : 'warning'}}"></view><text>月石本地规则 · {{snapshot.freshness === 'fresh' ? '运行中' : '状态延迟'}}</text></view>
+
+  <view class="state-card" wx:if="{{loading}}"><text>正在读取月石状态</text></view>
+  <state-banner wx:elif="{{error && !snapshot}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" bindretry="load" />
+
+  <block wx:if="{{snapshot}}">
+    <view class="guardian-state {{snapshot.guardianState}}">
+      <view class="state-light"></view>
+      <view><text class="state-title">{{presentation.title}}</text><text class="state-detail">{{presentation.detail}}</text></view>
+    </view>
+
+    <view class="snapshot-grid">
+      <view><text>{{snapshot.interventionCount}} / {{snapshot.interventionLimit}}</text><text>今晚提醒</text></view>
+      <view><text>{{snapshot.activeIntervention ? snapshot.activeIntervention.level : '—'}} / {{settings.maxVibrationLevel}}</text><text>当前 / 上限</text></view>
+      <view><text>{{snapshot.receivedAt}}</text><text>快照时间</text></view>
+    </view>
+
+    <view class="cloud-card" wx:if="{{snapshot.cloudRealtime}}">
+      <view class="row"><text class="section-label">云端实时通道</text><text class="cloud-state {{snapshot.cloudRealtime.mqttConnected ? 'ok' : 'warn'}}">{{snapshot.cloudRealtime.mqttConnected ? 'MQTT 已连接' : 'MQTT 未连接'}}</text></view>
+      <view class="cloud-details">
+        <text>{{snapshot.cloudRealtime.audioEnabled ? '候选短音频已授权' : '音频上传未启用'}}</text>
+        <text>待传 {{snapshot.cloudRealtime.audioQueueDepth}} · 丢弃 {{snapshot.cloudRealtime.audioDropped}}</text>
+      </view>
+      <text class="cloud-decision" wx:if="{{snapshot.cloudRealtime.lastDecision}}">最近云端判断：{{snapshot.cloudRealtime.lastDecision}}</text>
+    </view>
+    <view class="loop-card">
+      <text class="section-label">本地干预闭环</text>
+      <view class="loop-steps"><view wx:for="{{loopSteps}}" wx:key="name"><text>{{index + 1}}</text><text>{{item}}</text></view></view>
+    </view>
+
+    <view class="activity-card">
+      <text class="section-label">最近动态</text>
+      <view class="activity-row" wx:for="{{snapshot.activities}}" wx:key="time"><text>{{item.time}}</text><view><text>{{item.title}}</text><text>{{item.detail}}</text></view></view>
+    </view>
+
+    <button hover-class="none" wx:if="{{canStop}}" class="secondary-button stop-button" disabled="{{stopping}}" bindtap="stopCurrent">{{stopping ? '正在请求月石停止' : '停止本次提醒'}}</button>
+    <state-banner wx:if="{{error && snapshot}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="false" />
+
+    <view class="demo-panel" wx:if="{{demoMode}}"><text class="demo-title">演示状态</text><view class="demo-row"><button hover-class="none" wx:for="{{demoPhases}}" wx:key="id" class="demo-chip {{snapshot.guardianState === item.id ? 'active' : ''}}" data-phase="{{item.id}}" bindtap="setDemoPhase">{{item.name}}</button></view></view>
+  </block>
+
+  <view class="boundary-note">这里只显示设备与云端快照。仅在用户授权且本地规则触发候选时上传短音频窗，不传输整夜连续录音。</view>
+  <button hover-class="none" class="primary-button" bindtap="openTonight">查看今晚安全设置</button>
+  <button hover-class="none" class="secondary-button back-tonight" bindtap="backTonight">返回今晚</button>
+  <view class="safe-note">用于趋势观察与体位提醒，不替代医疗检查</view>
+</view>

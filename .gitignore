@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+*.db
+*.db-*
+build*/
+managed_components/
+project.private.config.json
+node_modules/
+.DS_Store
