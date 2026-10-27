@@ -1,6 +1,6 @@
 # 共同维护
 
-仓库规划：feldspar-sleep/feldspar，私有。每人使用自己的 GitHub 账号；由组织负责人邀请指定好友并授予本仓库 Write 权限，不共享账号或密钥。邀请尚未发送。
+仓库地址：https://github.com/Evan0825/feldspar ，私有。后续可迁移至免费组织 feldspar-sleep。每人使用自己的 GitHub 账号；由仓库负责人邀请指定好友共同维护，不共享账号或密钥。协作者邀请对象为 Fu99966；邀请是否接受以 GitHub 显示为准。
 
 1. 克隆仓库，按 README 安装依赖并运行离线检查。
 2. 每个修改使用独立分支，通过 Pull Request 说明变更与验证结果；保留 review 讨论。
