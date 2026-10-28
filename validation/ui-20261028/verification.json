@@ -19,12 +19,20 @@
     },
     "demo_features": "passed",
     "backend_smoke": "passed, in-process only",
-    "native_source_checks": "JS/JSON valid; demo 21 routes / 1590.1 KiB, integration 19 routes / 1181.2 KiB"
+    "native_source_checks": "JS/JSON valid; demo 21 routes / 1590.8 KiB, integration 19 routes complete"
   },
-  "ui_review": "blocked: Mac locked before final capture after typography refinement; first-pass evidence is included",
+  "ui_review": "passed after full WeChat recompilation and final four-screen plus focused comparisons",
   "not_verified": [
-    "final native visual pass",
-    "real mobile BLE and hardware behavior",
+    "real mobile BLE, accessibility and hardware behavior",
     "production cloud persistence after deployment"
+  ],
+  "ui_evidence": [
+    "01-home-approved.png",
+    "02-strategy-approved.png",
+    "03-profile-approved.png",
+    "04-preferences-approved.png",
+    "design-comparison-approved.png",
+    "comparison-focus-1.png",
+    "comparison-focus-3.png"
   ]
 }

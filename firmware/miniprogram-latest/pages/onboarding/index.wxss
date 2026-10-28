@@ -49,3 +49,12 @@
 .preferences-page .text-input, .preferences-page .default-reminder { font-size: 34rpx; }
 .preferences-page .mode-title { font-size: 30rpx; }
 .preferences-page .reminder-option, .preferences-page .preferences-save { font-size: 34rpx; }
+
+.preferences-page .form-card { margin-top: 36rpx; }
+.preferences-page .text-input { height: 110rpx; }
+.preferences-page .field-label.second { margin-top: 54rpx; }
+.preferences-page .mode-option { min-height: 146rpx; }
+.preferences-page .default-reminder { min-height: 154rpx; margin-top: 56rpx; }
+.preferences-page .preferences-heading { margin-top: 44rpx; }
+.preferences-page .reminder-option { min-height: 144rpx; }
+.preferences-page .field-label, .preferences-page .text-input, .preferences-page .default-reminder, .preferences-page .reminder-option, .preferences-page .preferences-save { font-size: 38rpx; }

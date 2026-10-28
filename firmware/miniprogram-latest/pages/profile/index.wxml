@@ -11,18 +11,18 @@
     </view>
 
     <view class="menu-card">
-      <view class="menu-row" bindtap="openPreferences"><image src="/images/ui/person.png" mode="aspectFit" /><text>个性化偏好</text><text class="arrow">›</text></view>
-      <view class="menu-row" bindtap="openDevice"><image src="/images/menu-family.png" mode="aspectFit" /><text>设备与家庭</text><text class="arrow">›</text></view>
-      <view class="menu-row" data-section="ai" bindtap="toggleSection"><image src="/images/menu-ai-data.png" mode="aspectFit" /><text>AI 与数据授权</text><text class="arrow">{{expandedSection === 'ai' ? '⌄' : '›'}}</text></view>
+      <view class="menu-row" bindtap="openPreferences"><image src="/images/ui/person.png" mode="aspectFit" /><text class="menu-label">个性化偏好</text><text class="arrow">›</text></view>
+      <view class="menu-row" bindtap="openDevice"><image src="/images/menu-family.png" mode="aspectFit" /><text class="menu-label">设备与家庭</text><text class="arrow">›</text></view>
+      <view class="menu-row" data-section="ai" bindtap="toggleSection"><image src="/images/menu-ai-data.png" mode="aspectFit" /><text class="menu-label">AI 与数据授权</text><text class="arrow">{{expandedSection === 'ai' ? '⌄' : '›'}}</text></view>
       <view class="section-detail" wx:if="{{expandedSection === 'ai'}}">
         <view class="authorization-row"><view><text>AI 读取睡眠资料</text><text>{{profile.aiDataAuthorized ? '已授权' : '未授权'}}</text></view><switch color="#D28B2D" checked="{{profile.aiDataAuthorized}}" disabled="{{authorizing}}" bindchange="toggleAiAuthorization" /></view>
         <view class="authorization-row"><view><text>云端实时声音分析</text><text>{{profile.mqttAudioAuthorized ? '已授权' : '未授权'}}</text></view><switch color="#D28B2D" checked="{{profile.mqttAudioAuthorized}}" disabled="{{authorizing}}" bindchange="toggleMqttAudioAuthorization" /></view>
         <text>仅在本地规则发现疑似鼾声时上传短音频窗，使用 MQTT/TLS 加密传输，不保存整夜连续录音。</text>
         <text>AI 解读仍只使用结构化事件、夜间摘要、连续趋势与主动反馈。</text>
       </view>
-      <view class="menu-row" bindtap="openDevice"><image src="/images/menu-update.png" mode="aspectFit" /><text>模型与固件更新</text><text class="arrow">›</text></view>
-      <button hover-class="none" open-type="share" class="menu-row share-row"><image src="/images/ui/share-arrow.png" mode="aspectFit" /><text>分享月石</text><text class="arrow">›</text></button>
-      <view class="menu-row" data-section="privacy" bindtap="toggleSection"><image src="/images/menu-privacy.png" mode="aspectFit" /><text>隐私与帮助</text><text class="arrow">{{expandedSection === 'privacy' ? '⌄' : '›'}}</text></view>
+      <view class="menu-row" bindtap="openDevice"><image src="/images/menu-update.png" mode="aspectFit" /><text class="menu-label">模型与固件更新</text><text class="arrow">›</text></view>
+      <button hover-class="none" open-type="share" class="menu-row share-row"><image src="/images/ui/share-arrow.png" mode="aspectFit" /><text class="menu-label">分享月石</text><text class="arrow">›</text></button>
+      <view class="menu-row" data-section="privacy" bindtap="toggleSection"><image src="/images/menu-privacy.png" mode="aspectFit" /><text class="menu-label">隐私与帮助</text><text class="arrow">{{expandedSection === 'privacy' ? '⌄' : '›'}}</text></view>
       <view class="section-detail" wx:if="{{expandedSection === 'privacy'}}"><text>夜间判断与安全决策在月石本地完成。报告用于趋势观察与体位提醒，不替代医疗检查。</text></view>
     </view>
 
