@@ -49,3 +49,6 @@
 .state-copy { margin-top: 12rpx; color: #675d53; font-size: 22rpx; line-height: 1.6; }
 .error-card .primary-button { margin-top: 24rpx; }
 .safe-note { margin-top: 26rpx; padding: 0; border: 0; background: transparent; text-align: center; font-size: 20rpx; }
+
+.source-selection { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 28rpx; color: #766c61; font-size: 24rpx; }
+.source-selection .ai-home-link { width: auto; margin: 0; padding: 0; color: #a76522; background: transparent; font-size: 24rpx; }

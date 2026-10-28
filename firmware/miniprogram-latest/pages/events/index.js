@@ -3,6 +3,7 @@ const { runServiceErrorAction, toUserError } = require('../../domain/service-err
 
 Page({
   data: {
+    sourceLabel: '',
     events: [],
     visibleEvents: [],
     filter: 'all',
@@ -18,7 +19,7 @@ Page({
       { id: 'response', name: '响应' },
     ],
   },
-  onLoad() { return this.load() },
+  onLoad(options = {}) { this._nightId = decodeURIComponent(options.nightId || ''); this.setData({ sourceLabel: decodeURIComponent(options.date || '') }); return this.load() },
   async load() {
     this.setData({
       loading: true,
@@ -30,13 +31,15 @@ Page({
       nightLabel: '',
     })
     try {
-      // Resolve the latest completed night first. Never fall back to a
-      // device-wide recent-events query, which can span multiple nights.
-      const latestReport = await services.reports.getLatest()
-      const nightId = latestReport && (latestReport.nightId || latestReport.id)
-      const nightLabel = formatNightLabel(latestReport)
-      if (!latestReport || latestReport.hasData === false || !nightId) {
-        this.setData({ nightId: nightId || '', nightLabel, phase: 'empty' })
+      let nightId = this._nightId
+      let nightLabel = this.data.sourceLabel
+      if (!nightId) {
+        const latestReport = await services.reports.getLatest()
+        nightId = latestReport && latestReport.hasData !== false && (latestReport.nightId || latestReport.id)
+        nightLabel = formatNightLabel(latestReport)
+      }
+      if (!nightId) {
+        this.setData({ nightLabel, phase: 'empty' })
         return
       }
 

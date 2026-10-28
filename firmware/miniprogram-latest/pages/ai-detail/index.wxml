@@ -3,7 +3,7 @@
   <state-banner wx:if="{{!loading && error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="false" />
 
   <block wx:if="{{!loading && interpretation}}">
-    <view class="detail-meta"><text>{{interpretation.generatedAt}} · {{interpretation.kind === 'seven-night' ? '7 晚' : '单晚'}}</text><text>数据质量 {{interpretation.dataQuality}}</text></view>
+    <view class="detail-meta"><text>{{interpretation.periodLabel}} · {{interpretation.kind === 'seven-night' ? '7 晚' : '单晚'}}</text><text>数据质量 {{interpretation.dataQuality}}</text></view>
     <view class="page-title">{{interpretation.conclusion}}</view>
     <text class="boundary-copy">仅反映趋势关联。</text>
 

@@ -1,6 +1,6 @@
 <view class="page events-page">
 
-  <view class="night-scope" wx:if="{{nightLabel}}"><text class="night-scope-date">{{nightLabel}}</text><text class="night-scope-copy">只展示最近一晚；白天调试记录不会计入。</text></view>
+  <view class="night-scope" wx:if="{{nightLabel}}"><text class="night-scope-date">{{sourceLabel || nightLabel}}</text></view>
   <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取夜间事件</text></view>
   <state-banner wx:elif="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="retry" bindaction="handleServiceAction" />
   <view class="empty-state" wx:elif="{{phase === 'empty'}}">暂无夜间事件</view>

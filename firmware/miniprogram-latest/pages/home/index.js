@@ -89,7 +89,7 @@ Page({
         const hasReport = Boolean(latestReport && latestReport.hasData !== false)
         this.setData({
           morningReportState: hasReport ? 'ready' : 'empty',
-          morningReportCopy: hasReport ? '最近一晚报告已生成' : '尚未收到有效夜间记录',
+          morningReportCopy: hasReport ? '查看睡眠记录' : '尚未收到有效夜间记录',
         })
       }
     } catch (error) {

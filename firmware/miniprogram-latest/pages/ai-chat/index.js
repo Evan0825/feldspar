@@ -46,7 +46,7 @@ Page({
         contextConclusion: interpretation.conclusion,
         contextSummary: interpretation.summary,
         quickQuestions: interpretation.hasData
-          ? ['为什么不建议提高振动强度？', '这能说明我有睡眠呼吸暂停吗？']
+          ? (interpretation.kind === 'seven-night' ? ['这 7 晚的趋势说明什么？', '哪些记录影响了判断？'] : ['为什么不建议提高振动强度？', '这能说明我有睡眠呼吸暂停吗？'])
           : ['为什么昨夜没有记录？', '怎样确认设备正在上传数据？'],
       })
     } catch (error) {

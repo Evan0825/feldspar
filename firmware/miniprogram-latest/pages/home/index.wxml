@@ -37,7 +37,7 @@
 
   </block>
 
-  <view class="report-shortcut" wx:if="{{morningReportState === 'loading'}}"><text>正在同步昨夜记录</text></view>
+  <view class="report-shortcut" wx:if="{{morningReportState === 'loading'}}"><text>正在同步睡眠记录</text></view>
   <state-banner wx:elif="{{morningReportState === 'error'}}" tone="danger" title="{{morningReportError.title}}" detail="{{morningReportError.detail}}" retryable="{{morningReportError.retryable}}" action="{{morningReportError.action}}" bindretry="retryMorningReport" bindaction="handleMorningReportAction" />
   <view class="report-shortcut" wx:else bindtap="openReport"><text>{{morningReportCopy}}</text><text class="arrow">›</text></view>
 </view>
