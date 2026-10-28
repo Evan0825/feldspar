@@ -1,10 +1,12 @@
 const services = require('../../services/index')
+const { takeSleepSource } = require('../../domain/sleep-source')
 const { getAttentionGuidance } = require('../../domain/attention-guidance')
 const { runServiceErrorAction, toUserError } = require('../../domain/service-error')
 
 Page({
   data: {
     scope: 'night',
+    sourceLabel: '',
     report: null,
     durationText: '',
     durationHours: 0,
@@ -30,7 +32,15 @@ Page({
     errorMessage: '',
   },
 
-  onShow() { this.load() },
+  onShow() {
+    const source = takeSleepSource()
+    if (source) {
+      this._sourceSelection = source
+      this.setData({ sourceLabel: source.label, scope: source.kind === 'seven-night' ? 'week' : 'night', phase: 'loading' })
+    }
+    return this.load()
+  },
+  onHide() { this._requestId = (this._requestId || 0) + 1 },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()) },
 
   async load() {
@@ -66,7 +76,12 @@ Page({
       })
     }
 
-    const reportResult = await settle(services.reports.getLatest())
+    const source = this._sourceSelection
+    if (source && (source.kind === 'seven-night' || !source.nightId)) {
+      this.setData({ loading: false, phase: 'source-unavailable', report: null })
+      return
+    }
+    const reportResult = await settle(services.reports.getLatest(source ? { nightId: source.nightId } : undefined))
     if (requestId !== this._requestId) return
     if (!reportResult.ok) {
       const userError = toUserError(reportResult.error, '晨报')
@@ -80,8 +95,8 @@ Page({
     }
 
     const report = reportResult.value
-    if (!report || report.hasData === false) {
-      this.setData({ loading: false, phase: 'empty' })
+    if (!report || report.hasData === false || (source && report.id !== source.nightId)) {
+      this.setData({ loading: false, phase: source ? 'source-unavailable' : 'empty', report: null })
       return
     }
 
@@ -109,10 +124,11 @@ Page({
       timelineEnd: report.endTime || '—',
       timelineMarks: report.timelineMarks || [],
       interpretation: report.aiInterpretation || null,
-      activeInterpretation: report.aiInterpretation || null,
+      weekInterpretation: null,
+      activeInterpretation: this.data.scope === 'week' ? null : report.aiInterpretation || null,
       interpretationFallback: !report.aiInterpretation,
     })
-    this.loadSupplementary(requestId, report)
+    if (!source) this.loadSupplementary(requestId, report)
   },
 
   async loadSupplementary(requestId, report) {
@@ -145,6 +161,7 @@ Page({
   },
 
   setScope(event) {
+    if (this._sourceSelection) return
     const scope = event.currentTarget.dataset.scope
     if (!['night', 'week'].includes(scope)) return
     this.setData({
@@ -153,10 +170,11 @@ Page({
     })
   },
 
+  clearSourceSelection() { this._sourceSelection = null; this.setData({ sourceLabel: '', scope: 'night', phase: 'loading' }); return this.load() },
   retry() { return this.load() },
   handleServiceAction(event) { return runServiceErrorAction(event.detail.action, () => this.retry(), wx) },
-  openEvents() { wx.navigateTo({ url: '/pages/events/index' }) },
-  openFeedback() { wx.navigateTo({ url: '/pages/trends/index' }) },
+  openEvents() { if (this.data.report) wx.navigateTo({ url: `/pages/events/index?nightId=${encodeURIComponent(this.data.report.id)}&date=${encodeURIComponent(this.data.report.date || '')}` }) },
+  openFeedback() { wx.navigateTo({ url: '/pages/trends/index?focus=feedback' }) },
   openInterpretation() {
     if (!this.data.activeInterpretation) return
     wx.navigateTo({ url: `/pages/ai-detail/index?interpretationId=${this.data.activeInterpretation.interpretationId}` })

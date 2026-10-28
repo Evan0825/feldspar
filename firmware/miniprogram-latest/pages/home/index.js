@@ -1,4 +1,5 @@
 const services = require('../../services/index')
+const { buildPersonalStrategy } = require('../../domain/personal-strategy')
 const { runServiceErrorAction, toUserError } = require('../../domain/service-error')
 const { buildDirectShare, buildTimelineShare } = require('../../domain/share-card')
 
@@ -9,6 +10,9 @@ Page({
     partialError: null,
     status: null,
     settings: null,
+    strategy: null,
+    strategyError: null,
+    strategyLoading: true,
     sound: null,
     light: null,
     guardian: null,
@@ -33,6 +37,7 @@ Page({
       morningReportError: null,
     })
     await Promise.all([this.loadDeviceData(), this.loadMorningReport()])
+    await this.loadStrategy()
   },
 
   async loadDeviceData() {
@@ -84,7 +89,7 @@ Page({
         const hasReport = Boolean(latestReport && latestReport.hasData !== false)
         this.setData({
           morningReportState: hasReport ? 'ready' : 'empty',
-          morningReportCopy: hasReport ? '最近一晚报告已生成' : '尚未收到有效夜间记录',
+          morningReportCopy: hasReport ? '查看睡眠记录' : '尚未收到有效夜间记录',
         })
       }
     } catch (error) {
@@ -92,7 +97,22 @@ Page({
     }
   },
 
-  retryDevice() { return this.loadDeviceData() },
+  async loadStrategy() {
+    const requestId = (this._strategyRequestId || 0) + 1
+    this._strategyRequestId = requestId
+    this.setData({ strategyLoading: !this.data.strategy, strategyError: null })
+    try {
+      const [profile, nights] = await Promise.all([services.auth.getProfile(), services.reports.getSevenNightTrend()])
+      if (requestId === this._strategyRequestId) this.setData({ strategy: buildPersonalStrategy({ profile, nights, status: this.data.status, guardian: this.data.guardian, plan: this.data.settings && this.data.settings.personalStrategy }) })
+    } catch (error) {
+      if (requestId === this._strategyRequestId) this.setData({ strategyError: toUserError(error, '温和方案') })
+    } finally {
+      if (requestId === this._strategyRequestId) this.setData({ strategyLoading: false })
+    }
+  },
+  openStrategy() { wx.navigateTo({ url: '/pages/strategy/index' }) },
+
+  retryDevice() { return this.loadDeviceData().then(() => this.loadStrategy()) },
   retryMorningReport() { return this.loadMorningReport() },
   handleDeviceAction(event) { return runServiceErrorAction(event.detail.action, () => this.retryDevice(), wx) },
   handleMorningReportAction(event) { return runServiceErrorAction(event.detail.action, () => this.retryMorningReport(), wx) },

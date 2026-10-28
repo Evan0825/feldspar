@@ -1,7 +1,6 @@
 <view class="page device-page">
-  <view class="brand">好眠 SnoozMate</view><view class="page-title">月石设备</view>
-  <view class="page-lead">查看实际连接、采集和安全控制状态。</view>
-  <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取设备状态</text><text class="state-copy">正在同步主机、振动片与本地检测信息。</text></view>
+
+  <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取设备状态</text></view>
   <state-banner wx:elif="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="retry" bindaction="handleServiceAction" />
   <view class="empty-state" wx:elif="{{phase === 'empty'}}">暂无设备状态。请确认已绑定月石床头主机后重试。</view>
   <block wx:else>
@@ -42,10 +41,9 @@
   <view class="card detail-list">
     <view class="detail-row" data-kind="firmware" bindtap="showUpdateInfo"><view><text>固件版本</text><text>{{status.host.firmwareVersion}}</text></view><text class="value">{{status.host.firmwareUpdateAvailable ? '待更新 ›' : '更新状态未核验'}}</text></view>
     <view class="detail-row" data-kind="model" bindtap="showUpdateInfo"><view><text>检测算法版本</text><text>{{status.host.modelVersion}}</text></view><text class="value {{status.host.modelUpdateAvailable ? 'warn' : ''}}">{{status.host.modelUpdateAvailable ? '待更新 ›' : '更新状态未核验'}}</text></view>
-    <view class="detail-row"><view><text>上次同步</text><text>结构化事件与夜间摘要</text></view><text class="value {{status.sync.status === 'success' ? 'ok' : 'warn'}}">{{status.sync.lastSyncedAt}}</text></view>
+    <view class="detail-row"><view><text>上次同步</text></view><text class="value {{status.sync.status === 'success' ? 'ok' : 'warn'}}">{{status.sync.lastSyncedAt}}</text></view>
     <view class="detail-row"><view><text>数据来源</text><text>真实设备与模拟记录会明确区分</text></view><text class="value {{status.dataSource === 'device' ? 'ok' : 'warn'}}">{{status.dataSource === 'device' ? '真实设备' : status.dataSource === 'simulated' ? '模拟测试' : '尚无数据'}}</text></view>
   </view>
 
-  <view class="safe-note">自动提醒需完成采集、识别与安全条件核验后启用。</view>
   </block>
 </view>

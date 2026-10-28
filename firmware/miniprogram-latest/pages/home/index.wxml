@@ -1,7 +1,6 @@
 <view class="page home-page">
   <view class="home-header">
-    <view class="brand">好眠 SnoozMate</view>
-    <view class="device-pill" aria-label="月石床头主机状态" wx:if="{{status}}" bindtap="openDevice"><view class="status-dot {{status.host.online ? '' : 'offline'}}"></view><text>{{status.host.online ? '月石在线' : '设备离线'}}</text></view>
+    <view class="device-pill" aria-label="月石床头主机状态" wx:if="{{status}}" bindtap="openDevice"><view class="status-dot {{status.host.online ? '' : 'offline'}}"></view><text>{{status.host.online ? '设备在线' : '设备离线'}}</text></view>
   </view>
 
   <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在同步今晚状态</text></view>
@@ -9,29 +8,36 @@
 
   <block wx:else>
     <state-banner wx:if="{{partialError}}" tone="warning" title="部分状态暂未同步" detail="{{partialError.detail}}" retryable="{{partialError.retryable}}" action="{{partialError.action}}" bindretry="retryDevice" bindaction="handleDeviceAction" />
-    <view class="hero-copy"><text class="hero-title">今晚已准备好</text></view>
-    <view class="offline-banner" wx:if="{{status && !status.host.online}}">状态暂时延迟，本地守护不受影响。</view>
+    <view class="hero-copy"><text class="hero-title">{{status.controlAvailable ? '今晚已就绪' : '设备待就绪'}}</text></view>
+    <view class="offline-banner" wx:if="{{status && !status.host.online}}">设备状态待同步。</view>
     <view class="pad-banner" wx:if="{{status && !status.pad.connected}}">枕下定向振动片未连接，今晚仅记录。</view>
 
     <view class="product-stage" aria-label="月石床头主机与枕下定向振动片" bindtap="openLive"><image src="/images/system-hero.png" mode="aspectFit" /></view>
 
-    <view class="home-ai-row" bindtap="openAi"><view><image class="ai-mark" src="/images/tab-ai-active.png" mode="aspectFit" /><text>好眠 AI</text></view><view><text>{{activeCommand && activeCommand.status === 'applied' ? '今晚方案已应用' : '推荐方案 · 可手动微调'}}</text><text class="arrow">›</text></view></view>
-
-    <button hover-class="none" class="primary-button tonight-button" disabled="{{!status.controlAvailable}}" bindtap="openTonight">查看今晚设置</button>
+    <view class="strategy-card" wx:if="{{strategy && !strategyError}}">
+      <view class="strategy-label" bindtap="openStrategy"><text>当前温和方案</text><text class="arrow">›</text></view>
+      <view class="strategy-title-row"><text class="strategy-title">{{strategy.title}}</text><text class="strategy-badge">{{strategy.badge}}</text></view>
+      <text class="strategy-progress-label">{{strategy.progressLabel}}</text>
+      <view class="strategy-progress" wx:if="{{strategy.progressPercent !== null}}"><view style="width: {{strategy.progressPercent}}%" /></view>
+      <button hover-class="none" class="primary-button tonight-button" bindtap="openStrategy">查看方案</button>
+    </view>
+    <view class="strategy-card strategy-empty" wx:elif="{{strategyLoading}}">正在读取方案</view>
+    <view class="strategy-card strategy-empty" wx:else bindtap="openStrategy"><text>方案待同步</text><text class="arrow">›</text></view>
 
     <view class="control-grid">
-      <view class="control-card {{!status.controlAvailable ? 'disabled' : ''}}" bindtap="openSound"><image src="/images/control-sound.png" mode="aspectFit" /><view><text class="control-title">疗愈声音</text><text>{{sound.trackName}}</text></view><text class="arrow">›</text></view>
-      <view class="control-card {{!status.controlAvailable ? 'disabled' : ''}}" bindtap="openLight"><image src="/images/control-light.png" mode="aspectFit" /><view><text class="control-title">琥珀夜灯</text><text>{{light.enabled ? light.brightness + '%' : '已关闭'}}</text></view><text class="arrow">›</text></view>
+      <view role="button" aria-label="{{sound.playing ? '声音，正在播放' : '声音，未播放'}}" class="control-card {{sound.playing ? 'sound-active' : ''}} {{!status.controlAvailable ? 'disabled' : ''}}" bindtap="openSound"><image class="sound-icon" src="/images/ui/sound{{sound.playing ? '-active' : ''}}.png" mode="aspectFit" /><text>声音</text></view>
+      <view role="button" aria-label="{{light.enabled ? '夜灯，已开启' : '夜灯，未开启'}}" class="control-card {{light.enabled ? 'light-active' : ''}} {{!status.controlAvailable ? 'disabled' : ''}}" bindtap="openLight"><image class="light-icon" src="/images/host-detail.png" mode="aspectFit" /><text>夜灯</text></view>
+    </view>
+    <view class="shortcut-list">
+      <view class="shortcut-row home-ai-row" bindtap="openAi"><image src="/images/ui/chat.png" mode="aspectFit" /><text>问 AI</text><text class="arrow">›</text></view>
+      <view class="shortcut-row" bindtap="openLive"><image src="/images/ui/activity.png" mode="aspectFit" /><text>实时状态</text><text class="arrow">›</text></view>
     </view>
 
-    <view class="command-banner" wx:if="{{activeCommand && activeCommand.status !== 'applied'}}" bindtap="openActiveCommand"><view><text>今晚设置正在生效</text><text>完成月石回读后才会确认</text></view><text class="arrow">›</text></view>
+    <view class="command-banner" wx:if="{{activeCommand && activeCommand.status !== 'applied'}}" bindtap="openActiveCommand"><view><text class="command-title">今晚设置待确认</text><text class="command-copy">等待设备回读</text></view><text class="arrow">›</text></view>
 
-    <view class="live-row" wx:if="{{guardian}}" bindtap="openLive"><view><text>实时守护</text><text>{{guardian.guardianState === 'intervening' ? '正在温和提醒' : guardian.guardianState === 'verifying' ? '正在验证响应' : '本地运行，断网也能继续。'}}</text></view><view><text>查看实时守护</text><text class="arrow">›</text></view></view>
   </block>
 
-  <view class="report-shortcut" wx:if="{{morningReportState === 'loading'}}"><text>正在同步昨夜记录</text></view>
+  <view class="report-shortcut" wx:if="{{morningReportState === 'loading'}}"><text>正在同步睡眠记录</text></view>
   <state-banner wx:elif="{{morningReportState === 'error'}}" tone="danger" title="{{morningReportError.title}}" detail="{{morningReportError.detail}}" retryable="{{morningReportError.retryable}}" action="{{morningReportError.action}}" bindretry="retryMorningReport" bindaction="handleMorningReportAction" />
   <view class="report-shortcut" wx:else bindtap="openReport"><text>{{morningReportCopy}}</text><text class="arrow">›</text></view>
-  <view class="privacy-line">默认不上传整夜原始录音 · 夜间判断在月石本地完成</view>
-  <view class="safe-note">用于趋势观察与体位提醒，不替代医疗检查</view>
 </view>

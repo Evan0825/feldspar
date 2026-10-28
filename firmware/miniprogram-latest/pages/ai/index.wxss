@@ -1,6 +1,5 @@
 .ai-page { padding-top: 44rpx; }
-.welcome-row { display: flex; min-height: 64rpx; align-items: center; justify-content: space-between; }
-.greeting { color: #9b8f83; font-size: 30rpx; }
+.welcome-row { display: flex; min-height: 64rpx; align-items: center; justify-content: flex-end; }
 .records-link,.back-link { width: auto; min-height: 64rpx; margin: 0; padding: 0; background: transparent; color: #a76522; font-size: 28rpx; line-height: 64rpx; }
 .hero-copy { margin-top: 8rpx; }
 .hero-title { display: block; max-width: 660rpx; font-family: "Songti SC","STSong",serif; font-size: 52rpx; font-weight: 600; line-height: 1.3; letter-spacing: 1rpx; }

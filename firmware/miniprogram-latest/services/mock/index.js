@@ -446,7 +446,7 @@ function buildAiAnswer(interpretation, message) {
       text: '这类情况不能等待设备判断。请立即寻求身边帮助，并联系当地急救服务。',
       sections: {
         canExplain: '当前描述可能需要立即处理。',
-        cannotDetermine: '好眠不能判断原因或严重程度。',
+        cannotDetermine: '月石不能判断原因或严重程度。',
         nextStep: '立即联系当地急救服务。',
       },
       actions: ['emergency-help'],

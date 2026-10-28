@@ -3,9 +3,9 @@
   <state-banner wx:if="{{!loading && error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="false" />
 
   <block wx:if="{{!loading && interpretation}}">
-    <view class="detail-meta"><text>{{interpretation.generatedAt}} · {{interpretation.kind === 'seven-night' ? '7 晚' : '单晚'}}</text><text>数据质量 {{interpretation.dataQuality}}</text></view>
+    <view class="detail-meta"><text>{{interpretation.periodLabel}} · {{interpretation.kind === 'seven-night' ? '7 晚' : '单晚'}}</text><text>数据质量 {{interpretation.dataQuality}}</text></view>
     <view class="page-title">{{interpretation.conclusion}}</view>
-    <text class="boundary-copy">这是事件与体位的趋势关联，不用于判断具体疾病。</text>
+    <text class="boundary-copy">仅反映趋势关联。</text>
 
     <view class="section-title">判断依据</view>
     <view class="evidence-card {{selectedEvidenceId === item.id ? 'expanded' : ''}}" wx:for="{{interpretation.evidence}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleEvidence">
@@ -16,8 +16,8 @@
       </view>
     </view>
 
-    <button hover-class="none" class="secondary-button sleep-record" bindtap="openSleepRecord">查看原始睡眠记录</button>
-    <button hover-class="none" class="primary-button continue-chat" bindtap="openChat">针对本次继续追问</button>
+    <button hover-class="none" class="secondary-button sleep-record" bindtap="openSleepRecord">查看睡眠记录</button>
+    <button hover-class="none" class="primary-button continue-chat" bindtap="openChat">继续追问</button>
   </block>
 
   <view class="safe-note">用于趋势观察与体位提醒，不替代医疗检查</view>

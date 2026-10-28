@@ -4,7 +4,7 @@ const { createWxBleBridge } = require('./services/real/ble-bridge')
 
 App({
   globalData: {
-    brand: '好眠 SnoozMate',
+    brand: '月石',
     services,
   },
 

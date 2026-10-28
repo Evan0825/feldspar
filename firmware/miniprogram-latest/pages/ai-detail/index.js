@@ -1,4 +1,5 @@
 const services = require('../../services/index')
+const { rememberSleepSource, clearSleepSource } = require('../../domain/sleep-source')
 const { toUserError } = require('../../domain/service-error')
 
 Page({
@@ -29,7 +30,11 @@ Page({
     const item = this.data.interpretation
     if (item) wx.navigateTo({ url: `/pages/ai-chat/index?interpretationId=${item.interpretationId}&revision=${item.revision}` })
   },
-  openSleepRecord() { wx.switchTab({ url: '/pages/report/index' }) },
+  openSleepRecord() {
+    if (!this.data.interpretation) return
+    const source = rememberSleepSource(this.data.interpretation)
+    wx.switchTab({ url: '/pages/report/index', fail: () => clearSleepSource(source) })
+  },
   openPlan() {
     const item = this.data.interpretation
     if (item && item.kind === 'single-night') wx.navigateTo({ url: `/pages/ai-plan/index?interpretationId=${item.interpretationId}` })

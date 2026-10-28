@@ -60,11 +60,12 @@ Page({
     } catch (error) {
       const userError = toUserError(error, '演示状态')
       this.setData({ actionError: userError })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally {
       this.setData({ syncing: false })
     }
   },
+  openPreferences() { wx.navigateTo({ url: '/pages/onboarding/index?edit=1' }) },
   openDevice() { wx.navigateTo({ url: '/pages/device/index' }) },
   toggleSection(event) {
     const section = event.currentTarget.dataset.section
@@ -100,7 +101,7 @@ Page({
     } catch (error) {
       const userError = toUserError(error, 'AI 数据授权')
       this.setData({ actionError: userError, profile: { ...this.data.profile } })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally {
       this.setData({ authorizing: false })
     }
@@ -133,7 +134,7 @@ Page({
     } catch (error) {
       const userError = toUserError(error, '云端实时声音授权')
       this.setData({ actionError: userError, profile: { ...this.data.profile } })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally {
       this.setData({ authorizing: false })
     }
@@ -158,7 +159,7 @@ Page({
     } catch (error) {
       const userError = toUserError(error, '解绑设备')
       this.setData({ actionError: userError })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally {
       this.setData({ syncing: false })
     }

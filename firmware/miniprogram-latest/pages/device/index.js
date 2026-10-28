@@ -78,6 +78,6 @@ Page({
   },
   handleServiceAction(event) { return runServiceErrorAction(event.detail.action, () => this.retry(), wx) },
   showUpdateInfo(event) {
-    wx.showModal({ title: event.currentTarget.dataset.kind === 'model' ? '检测算法更新' : '固件更新', content: '当前为接口占位状态。正式版本需由硬件 OTA 与云端发布服务提供更新包和签名。', showCancel: false, confirmColor: '#B97728' })
+    wx.showModal({ title: event.currentTarget.dataset.kind === 'model' ? '检测算法更新' : '固件更新', content: '演示版暂不支持更新。', showCancel: false, confirmColor: '#B97728' })
   },
 })

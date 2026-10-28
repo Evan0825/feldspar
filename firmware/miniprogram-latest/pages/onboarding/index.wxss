@@ -20,3 +20,43 @@
 .privacy-row text { display: block; }
 .privacy-row text:first-child { font-weight: 650; }
 .privacy-row text:last-child { margin-top: 7rpx; color: #675d53; font-size: 21rpx; }
+
+.preferences-loading { padding: 60rpx 0; color: var(--muted); text-align: center; }
+.preferences-page { padding-top: 28rpx; }
+.form-card { margin: 24rpx 0 0; padding: 0; border: 0; background: transparent; }
+.field-label { color: var(--ink); font-size: 28rpx; font-weight: 600; }
+.text-input { height: 100rpx; border: 1rpx solid #e4d8c9; border-radius: 22rpx; background: rgba(255,250,242,.7); font-size: 30rpx; }
+.field-label.second { margin-top: 42rpx; }
+.mode-option { display: flex; align-items: center; gap: 12rpx; min-height: 108rpx; padding: 20rpx 16rpx; }
+.mode-option image { width: 36rpx; height: 36rpx; flex-shrink: 0; }
+.mode-title { flex: 1; margin: 0; font-size: 26rpx; font-weight: 500; white-space: nowrap; }
+.radio-mark { width: 32rpx; height: 32rpx; border: 3rpx solid #aaa195; border-radius: 50%; }
+.active .radio-mark { border: 9rpx solid var(--amber-action); }
+.preferences-heading { display: flex; align-items: center; justify-content: space-between; margin: 32rpx 4rpx 12rpx; font-size: 28rpx; font-weight: 600; }
+.help-button { display: flex; align-items: center; justify-content: center; width: 88rpx; height: 88rpx; margin: -20rpx -20rpx -20rpx 0; padding: 24rpx; background: transparent; }
+.help-button image { width: 36rpx; height: 36rpx; }
+.reminder-options { padding: 0 24rpx; border: 1rpx solid #e9dfd1; border-radius: 24rpx; background: rgba(255,250,242,.7); }
+.reminder-option { display: flex; align-items: center; gap: 24rpx; min-height: 122rpx; font-size: 28rpx; }
+.reminder-option + .reminder-option { border-top: 1rpx solid #e9dfd1; }
+.check-box { display: flex; align-items: center; justify-content: center; width: 42rpx; height: 42rpx; border: 2rpx solid #aaa195; border-radius: 10rpx; }
+.check-box.checked { border-color: var(--amber-action); background: var(--amber-action); }
+.check-box image { width: 30rpx; height: 30rpx; }
+.preferences-save { margin-top: 48rpx; }
+
+.preferences-page .field-label, .preferences-page .preferences-heading { font-size: 34rpx; }
+.preferences-page .text-input { font-size: 34rpx; }
+.preferences-page .mode-title { font-size: 30rpx; }
+.preferences-page .reminder-option, .preferences-page .preferences-save { font-size: 34rpx; }
+
+.preferences-page .form-card { margin-top: 36rpx; }
+.preferences-page .text-input { height: 110rpx; }
+.preferences-page .field-label.second { margin-top: 54rpx; }
+.preferences-page .mode-option { min-height: 146rpx; }
+.preferences-page .preferences-heading { margin-top: 44rpx; }
+.preferences-page .reminder-option { min-height: 144rpx; }
+.preferences-page .field-label, .preferences-page .text-input, .preferences-page .reminder-option, .preferences-page .preferences-save { font-size: 38rpx; }
+
+.fixed-reminder { display: flex; align-items: center; gap: 24rpx; min-height: 144rpx; border-bottom: 1rpx solid #e9dfd1; font-size: 34rpx; }
+.fixed-reminder image { width: 40rpx; height: 40rpx; }
+.fixed-reminder text:first-of-type { flex: 1; }
+.fixed-reminder text:last-child { color: var(--muted); font-size: 26rpx; }

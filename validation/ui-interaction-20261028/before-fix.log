@@ -1,0 +1,158 @@
+✖ demo: event details request the report night rather than unscoped events (6.559417ms)
+✖ demo: feedback entry scrolls to the questions and identifies its date (1.629208ms)
+✖ demo: unsaved feedback survives reload of the same night and resets for another (1.679792ms)
+✖ integration: event details request the report night rather than unscoped events (2.8125ms)
+✖ integration: feedback entry scrolls to the questions and identifies its date (0.787708ms)
+✖ integration: unsaved feedback survives reload of the same night and resets for another (0.965375ms)
+✖ integration: AI source return requests the selected night and rejects a different night (4.825167ms)
+✖ integration: an undated or seven-night source never substitutes the latest night (1.436709ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 0
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 61.406917
+
+✖ failing tests:
+
+test at ../../../../../private/tmp/moonstone_interaction_tests.cjs:19:2
+✖ demo: event details request the report night rather than unscoped events (6.559417ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /nightId=night-A/. Input:
+
+  '/pages/events/index'
+
+      at TestContext.<anonymous> (/private/tmp/moonstone_interaction_tests.cjs:21:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '/pages/events/index',
+    expected: /nightId=night-A/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at ../../../../../private/tmp/moonstone_interaction_tests.cjs:25:2
+✖ demo: feedback entry scrolls to the questions and identifies its date (1.629208ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /focus=feedback/. Input:
+
+  '/pages/trends/index'
+
+      at TestContext.<anonymous> (/private/tmp/moonstone_interaction_tests.cjs:26:112)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '/pages/trends/index',
+    expected: /focus=feedback/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at ../../../../../private/tmp/moonstone_interaction_tests.cjs:29:2
+✖ demo: unsaved feedback survives reload of the same night and resets for another (1.679792ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  null !== true
+
+      at TestContext.<anonymous> (/private/tmp/moonstone_interaction_tests.cjs:30:218)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at ../../../../../private/tmp/moonstone_interaction_tests.cjs:19:2
+✖ integration: event details request the report night rather than unscoped events (2.8125ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /nightId=night-A/. Input:
+
+  '/pages/events/index'
+
+      at TestContext.<anonymous> (/private/tmp/moonstone_interaction_tests.cjs:21:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '/pages/events/index',
+    expected: /nightId=night-A/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at ../../../../../private/tmp/moonstone_interaction_tests.cjs:25:2
+✖ integration: feedback entry scrolls to the questions and identifies its date (0.787708ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /focus=feedback/. Input:
+
+  '/pages/trends/index'
+
+      at TestContext.<anonymous> (/private/tmp/moonstone_interaction_tests.cjs:26:112)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '/pages/trends/index',
+    expected: /focus=feedback/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at ../../../../../private/tmp/moonstone_interaction_tests.cjs:29:2
+✖ integration: unsaved feedback survives reload of the same night and resets for another (0.965375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  null !== true
+
+      at TestContext.<anonymous> (/private/tmp/moonstone_interaction_tests.cjs:30:218)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at ../../../../../private/tmp/moonstone_interaction_tests.cjs:34:1
+✖ integration: AI source return requests the selected night and rejects a different night (4.825167ms)
+  TypeError: Cannot read properties of undefined (reading 'nightId')
+      at TestContext.<anonymous> (/private/tmp/moonstone_interaction_tests.cjs:37:126)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+
+test at ../../../../../private/tmp/moonstone_interaction_tests.cjs:39:1
+✖ integration: an undated or seven-night source never substitutes the latest night (1.436709ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  1 !== 0
+
+      at TestContext.<anonymous> (/private/tmp/moonstone_interaction_tests.cjs:40:433)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

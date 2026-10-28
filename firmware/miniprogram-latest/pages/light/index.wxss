@@ -15,12 +15,12 @@ page { background: #261f1b; }
 .mode-card.active { border-color: #e2a13b; background: rgba(226,161,59,.13); }
 .mode-card text { display: block; }
 .mode-card text:first-child { color: #f7e8d3; font-weight: 700; }
-.mode-card text:last-child { margin-top: 7rpx; color: #bba998; font-size: 20rpx; }
+.mode-card text:nth-child(2) { margin-top: 7rpx; color: #bba998; font-size: 20rpx; }
 .night-slider { margin-top: 18rpx; padding: 30rpx 28rpx 24rpx; border-radius: 24rpx; background: rgba(255,255,255,.05); }
 .slider-heading { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
 .slider-heading view text { display: block; }
 .slider-heading view text:first-child { color: #f7e8d3; font-size: 30rpx; font-weight: 650; }
-.slider-heading view text:last-child { margin-top: 6rpx; color: #bba998; font-size: 21rpx; }
+.slider-heading view text:nth-child(2) { margin-top: 6rpx; color: #bba998; font-size: 21rpx; }
 .slider-value { color: #efb35b; font-size: 42rpx; font-weight: 650; }
 .large-slider { display: flex; min-height: 104rpx; align-items: center; margin-top: 14rpx; }
 .large-slider slider { width: 100%; margin: 0; }

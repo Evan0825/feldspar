@@ -36,3 +36,24 @@ test('explicit zero observations remain zero and empty reports remain empty', as
   report = await api({ has_data: false, timeline: [], reminder_stats: {} }).reports.getLatest()
   assert.equal(report.hasData, false)
 })
+
+test('AI interpretation does not invent a period, quality, metrics or generation time', () => {
+  const { wrapInterpretation } = require('../firmware/miniprogram-latest/services/real').__test__
+  const record = wrapInterpretation({ summary: '观察结论', basis: ['仅有文字依据'] }, 'seven-night')
+  assert.equal(record.periodStart, null)
+  assert.equal(record.periodEnd, null)
+  assert.equal(record.dataQuality, '未评估')
+  assert.equal(record.generatedAt, '')
+  assert.equal(record.source, 'unknown')
+  assert.equal(record.sourceLabel, '来源未标注')
+  assert.equal(record.evidence[0].value, '—')
+  assert.equal(record.evidence[0].unit, '')
+})
+test('AI interpretation keeps explicitly provided dates and quality', () => {
+  const { wrapInterpretation } = require('../firmware/miniprogram-latest/services/real').__test__
+  const record = wrapInterpretation({ summary: '观察结论', period_start: '2026-08-25', period_end: '2026-08-31', data_quality: '良好', generated_at: '2026-09-01T00:00:00Z' }, 'seven-night')
+  assert.equal(record.periodStart, '2026-08-25')
+  assert.equal(record.periodEnd, '2026-08-31')
+  assert.equal(record.dataQuality, '良好')
+  assert.match(record.periodLabel, /2026-08-25.*2026-08-31/)
+})

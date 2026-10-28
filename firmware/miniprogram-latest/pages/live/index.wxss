@@ -40,3 +40,4 @@
 .cloud-state.warn { color: #a76522; }
 .cloud-details { display: flex; justify-content: space-between; gap: 18rpx; margin-top: 16rpx; color: #675d53; font-size: 20rpx; }
 .cloud-decision { display: block; margin-top: 14rpx; color: #4c382c; font-size: 21rpx; line-height: 1.55; }
+.demo-source { display: block; margin: 12rpx 0; color: var(--muted); font-size: 22rpx; }

@@ -688,6 +688,11 @@ const auth = {
     // Send both forms while old cloud revisions are still in circulation.
     const r = await request('PUT', '/api/v1/user/me/profile', { ...desired, ...c2s(desired) })
     const saved = wrapProfile(r && (r.profile || r))
+    for (const key of ['excludeSoundReminder', 'excludeLightReminder']) {
+      if (profile && typeof profile[key] === 'boolean' && saved[key] !== profile[key]) {
+        throw toServiceError(Object.assign(new Error('READBACK_MISMATCH'), { code: 'READBACK_MISMATCH' }))
+      }
+    }
     storageSet('haomian-profile', saved)
     profileCacheAt = Date.now()
     const session = storageGet('haomian-session')
@@ -702,6 +707,8 @@ function defaultProfile(id) {
     id: id || '',
     nickname: '月',
     sleepMode: 'shared',
+    excludeSoundReminder: false,
+    excludeLightReminder: false,
     privacyAccepted: false,
     aiDataAuthorized: false,
     mqttAudioAuthorized: false,
@@ -714,6 +721,8 @@ function wrapProfile(r) {
     id: r.id || r.user_id || r.userId || '',
     nickname: r.nickname || r.name || '月',
     sleepMode: r.sleep_mode || r.sleepMode || 'shared',
+    excludeSoundReminder: r.excludeSoundReminder === true || r.exclude_sound_reminder === true || r.exclude_sound_reminder === 1,
+    excludeLightReminder: r.excludeLightReminder === true || r.exclude_light_reminder === true || r.exclude_light_reminder === 1,
     privacyAccepted: Boolean(r.privacy_accepted || r.privacyAccepted),
     aiDataAuthorized: Boolean(r.ai_data_authorized || r.aiDataAuthorized),
     mqttAudioAuthorized: Boolean(r.mqtt_audio_authorized || r.mqttAudioAuthorized || r.raw_audio_candidate_consent || r.rawAudioCandidateConsent),
@@ -1041,6 +1050,7 @@ const device = {
     return {
       ...normalizeSettings({ ...s2c(r.config || r), sleepMode: r.mode === 'partner' ? 'shared' : 'solo' }),
       configVersion: r.config_version,
+      personalStrategy: r.personal_strategy || r.personalStrategy || null,
       name: r.name,
       mode: r.mode,
     }
@@ -1565,28 +1575,22 @@ function wrapFeedback(f) {
 function wrapInterpretation(ai, scope, nightId) {
   if (!ai) return null
   const isWeek = scope === 'seven-night'
+  const periodStart = ai.period_start || null
+  const periodEnd = ai.period_end || null
+  const sourceMatch = String(nightId || ai.night_id || '').match(/\d{4}-\d{2}-\d{2}/)
+  const sourceDate = ai.date || (sourceMatch ? sourceMatch[0] : '')
   const basis = Array.isArray(ai.basis) ? ai.basis : []
   // evidence 数组：basis.map 推 3 条结构化证据（前端 wxml 用 evidence[].metric/value/unit/window/explanation）
   const evidence = basis.map((text, i) => ({
     id: `ev-real-${i}`,
     metric: i === 0 ? '整体响应' : i === 1 ? '趋势' : '观察项',
-    value: text.length,
-    unit: '项',
-    window: isWeek ? '7 晚' : '昨夜',
+    value: '—',
+    unit: '',
+    window: isWeek ? (periodStart && periodEnd ? `${periodStart} — ${periodEnd}` : '周期未提供') : sourceDate || '日期未提供',
     sourceRefs: [`summary:${nightId || 'current'}`],
-    quality: 'good',
+    quality: ai.data_quality || 'unknown',
     explanation: text,
   }))
-  // periodStart/periodEnd：7 晚解读用最近 7 天推算，单晚用当天
-  let periodStart = ai.period_start
-  let periodEnd = ai.period_end
-  if (isWeek && !periodStart) {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(end.getDate() - 6)
-    periodStart = start.toISOString().slice(0, 10)
-    periodEnd = end.toISOString().slice(0, 10)
-  }
   return {
     interpretationId: ai.interpretation_id
       || (isWeek ? `week-${nightId || 'current'}-r1` : `night-${nightId || 'current'}-r1`),
@@ -1598,14 +1602,15 @@ function wrapInterpretation(ai, scope, nightId) {
     status: 'ready',
     hasData: ai.has_data !== false,
     eventCount: numberOr(ai.event_count, 0),
-    source: ai.source || 'llm',
-    sourceLabel: ai.source === 'llm' ? '云端 AI 解读' : '本地规则',
-    generatedAt: ai.generated_at || new Date().toISOString(),
-    periodLabel: isWeek ? '最近 7 晚' : (ai.date ? ai.date + ' 昨夜' : '昨夜'),
+    source: ai.source || 'unknown',
+    sourceLabel: ai.source === 'llm' ? '云端 AI 解读' : ['rule', 'rule-demo'].includes(ai.source) ? '本地规则' : '来源未标注',
+    generatedAt: ai.generated_at || '',
+    sourceDate: isWeek ? periodEnd || '' : sourceDate,
+    periodLabel: isWeek ? (periodStart && periodEnd ? `${periodStart} — ${periodEnd}` : '周期未提供') : sourceDate || '日期未提供',
     revision: ai.revision || 1,
     modelVersion: 'SnoozMate Insight 0.9',
     inputSnapshotVersion: 'night-summary-v1',
-    dataQuality: '良好',
+    dataQuality: ai.data_quality || '未评估',
     consentVersion: 'privacy-v1',
     conclusion: ai.summary || '',
     summary: ai.summary || '',

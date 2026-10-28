@@ -39,7 +39,7 @@ Page({
     } catch (error) {
       const userError = toUserError(error, '今晚设置')
       this.setData({ actionError: userError })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally { this.setData({ saving: false }) }
   },
   retryAction() {

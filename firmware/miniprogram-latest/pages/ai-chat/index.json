@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "问好眠 AI",
+  "navigationBarTitleText": "AI",
   "usingComponents": {
     "state-banner": "/components/state-banner/index"
   }

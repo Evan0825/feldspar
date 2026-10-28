@@ -73,7 +73,7 @@ Page({
       const userError = toUserError(error, '疗愈声音')
       this.setData({ sound: previousSound, volumeDraft: previousSound.volume, actionError: userError })
       this.preparePreviewSource(previousSound)
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     }
     finally { this.setData({ syncing: false }) }
   },
@@ -134,7 +134,7 @@ Page({
     } catch (error) {
       const userError = toUserError(error, '音效同步')
       this.setData({ actionError: userError })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally {
       this.setData({ uploading: false })
     }
