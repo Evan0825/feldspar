@@ -138,7 +138,7 @@ Page({
     if (!['overview', 'records'].includes(mode)) return
     this.setData({ mode, greeting: getTimeGreeting() })
     if (typeof wx.setNavigationBarTitle === 'function') {
-      wx.setNavigationBarTitle({ title: mode === 'records' ? '解读记录' : '好眠 AI' })
+      wx.setNavigationBarTitle({ title: mode === 'records' ? '解读记录' : '月石 AI' })
     }
   },
 

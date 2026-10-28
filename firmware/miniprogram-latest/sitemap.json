@@ -1,4 +1,4 @@
 {
-  "desc": "好眠 SnoozMate 页面索引",
+  "desc": "月石 页面索引",
   "rules": [{ "action": "disallow", "page": "*" }]
 }

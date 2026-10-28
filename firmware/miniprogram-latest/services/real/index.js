@@ -688,6 +688,11 @@ const auth = {
     // Send both forms while old cloud revisions are still in circulation.
     const r = await request('PUT', '/api/v1/user/me/profile', { ...desired, ...c2s(desired) })
     const saved = wrapProfile(r && (r.profile || r))
+    for (const key of ['excludeSoundReminder', 'excludeLightReminder']) {
+      if (profile && typeof profile[key] === 'boolean' && saved[key] !== profile[key]) {
+        throw toServiceError(Object.assign(new Error('READBACK_MISMATCH'), { code: 'READBACK_MISMATCH' }))
+      }
+    }
     storageSet('haomian-profile', saved)
     profileCacheAt = Date.now()
     const session = storageGet('haomian-session')
@@ -702,6 +707,8 @@ function defaultProfile(id) {
     id: id || '',
     nickname: '月',
     sleepMode: 'shared',
+    excludeSoundReminder: true,
+    excludeLightReminder: true,
     privacyAccepted: false,
     aiDataAuthorized: false,
     mqttAudioAuthorized: false,
@@ -714,6 +721,8 @@ function wrapProfile(r) {
     id: r.id || r.user_id || r.userId || '',
     nickname: r.nickname || r.name || '月',
     sleepMode: r.sleep_mode || r.sleepMode || 'shared',
+    excludeSoundReminder: r.excludeSoundReminder !== false && r.exclude_sound_reminder !== false && r.exclude_sound_reminder !== 0,
+    excludeLightReminder: r.excludeLightReminder !== false && r.exclude_light_reminder !== false && r.exclude_light_reminder !== 0,
     privacyAccepted: Boolean(r.privacy_accepted || r.privacyAccepted),
     aiDataAuthorized: Boolean(r.ai_data_authorized || r.aiDataAuthorized),
     mqttAudioAuthorized: Boolean(r.mqtt_audio_authorized || r.mqttAudioAuthorized || r.raw_audio_candidate_consent || r.rawAudioCandidateConsent),
@@ -1041,6 +1050,7 @@ const device = {
     return {
       ...normalizeSettings({ ...s2c(r.config || r), sleepMode: r.mode === 'partner' ? 'shared' : 'solo' }),
       configVersion: r.config_version,
+      personalStrategy: r.personal_strategy || r.personalStrategy || null,
       name: r.name,
       mode: r.mode,
     }

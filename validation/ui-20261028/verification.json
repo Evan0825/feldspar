@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-28",
+  "scope": "native mini-program UI and preferences; no production deploy or firmware output changes",
+  "checks": {
+    "demo_node_tests": {
+      "command": "npm run test:miniprogram",
+      "passed": 362,
+      "failed": 0
+    },
+    "integration_node_tests": {
+      "command": "python3 tests/run_checks.py (includes native C checks and Node tests)",
+      "passed": 31,
+      "failed": 0
+    },
+    "backend_tests": {
+      "command": "python -m unittest discover -s backend/tests -v",
+      "passed": 24,
+      "failed": 0
+    },
+    "demo_features": "passed",
+    "backend_smoke": "passed, in-process only",
+    "native_source_checks": "JS/JSON valid; demo 21 routes / 1590.1 KiB, integration 19 routes / 1181.2 KiB"
+  },
+  "ui_review": "blocked: Mac locked before final capture after typography refinement; first-pass evidence is included",
+  "not_verified": [
+    "final native visual pass",
+    "real mobile BLE and hardware behavior",
+    "production cloud persistence after deployment"
+  ]
+}

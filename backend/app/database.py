@@ -135,6 +135,8 @@ CREATE TABLE IF NOT EXISTS users (
  nickname VARCHAR(255) NOT NULL DEFAULT '',
  avatar VARCHAR(512) NOT NULL DEFAULT '',
  sleep_mode VARCHAR(32) NOT NULL DEFAULT 'shared',
+ exclude_sound_reminder TINYINT NOT NULL DEFAULT 1,
+ exclude_light_reminder TINYINT NOT NULL DEFAULT 1,
  privacy_accepted TINYINT NOT NULL DEFAULT 0,
  ai_data_authorized TINYINT NOT NULL DEFAULT 0,
  ai_consent_version VARCHAR(64) NOT NULL DEFAULT '',
@@ -375,6 +377,8 @@ def _init_mysql_db():
     try:
         conn.executescript(MYSQL_SCHEMA)
         _add_column(conn, "users", "sleep_mode", "VARCHAR(32) NOT NULL DEFAULT 'shared'")
+        _add_column(conn, "users", "exclude_sound_reminder", "TINYINT NOT NULL DEFAULT 1")
+        _add_column(conn, "users", "exclude_light_reminder", "TINYINT NOT NULL DEFAULT 1")
         _add_column(conn, "users", "privacy_accepted", "TINYINT NOT NULL DEFAULT 0")
         _add_column(conn, "users", "ai_data_authorized", "TINYINT NOT NULL DEFAULT 0")
         _add_column(conn, "users", "ai_consent_version", "VARCHAR(64) NOT NULL DEFAULT ''")
@@ -406,6 +410,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT UNIQUE NOT NULL,
             openid TEXT DEFAULT '', nickname TEXT DEFAULT '', avatar TEXT DEFAULT '',
             sleep_mode TEXT DEFAULT 'shared', privacy_accepted INTEGER DEFAULT 0,
+            exclude_sound_reminder INTEGER NOT NULL DEFAULT 1, exclude_light_reminder INTEGER NOT NULL DEFAULT 1,
             ai_data_authorized INTEGER DEFAULT 0, ai_consent_version TEXT DEFAULT '',
             raw_audio_candidate_consent INTEGER DEFAULT 0,
             session_token TEXT DEFAULT '', session_expires_at INTEGER DEFAULT 0,
@@ -520,6 +525,8 @@ def init_db():
         _add_column(conn, "devices", "config_version", "INTEGER DEFAULT 1")
         _add_column(conn, "events", "night_id", "TEXT DEFAULT ''")
         _add_column(conn, "users", "sleep_mode", "TEXT DEFAULT 'shared'")
+        _add_column(conn, "users", "exclude_sound_reminder", "INTEGER NOT NULL DEFAULT 1")
+        _add_column(conn, "users", "exclude_light_reminder", "INTEGER NOT NULL DEFAULT 1")
         _add_column(conn, "users", "privacy_accepted", "INTEGER DEFAULT 0")
         _add_column(conn, "users", "ai_data_authorized", "INTEGER DEFAULT 0")
         _add_column(conn, "users", "ai_consent_version", "TEXT DEFAULT ''")
@@ -624,7 +631,7 @@ def get_user_profile(user_id: str) -> dict:
     conn = get_conn()
     try:
         row = conn.execute(
-            """SELECT user_id,nickname,sleep_mode,privacy_accepted,
+            """SELECT user_id,nickname,sleep_mode,privacy_accepted,exclude_sound_reminder,exclude_light_reminder,
                       ai_data_authorized,ai_consent_version,raw_audio_candidate_consent
                FROM users WHERE user_id=?""",
             (user_id,),
@@ -635,6 +642,8 @@ def get_user_profile(user_id: str) -> dict:
             "id": row["user_id"],
             "nickname": row["nickname"] or "月石用户",
             "sleepMode": row["sleep_mode"] or "shared",
+            "excludeSoundReminder": bool(row["exclude_sound_reminder"]),
+            "excludeLightReminder": bool(row["exclude_light_reminder"]),
             "privacyAccepted": bool(row["privacy_accepted"]),
             "aiDataAuthorized": bool(row["ai_data_authorized"]),
             "aiConsentVersion": row["ai_consent_version"] or "",
@@ -650,6 +659,8 @@ def update_user_profile(user_id: str, patch: dict) -> dict:
     columns = {
         "nickname": "nickname",
         "sleepMode": "sleep_mode",
+        "excludeSoundReminder": "exclude_sound_reminder",
+        "excludeLightReminder": "exclude_light_reminder",
         "privacyAccepted": "privacy_accepted",
         "aiDataAuthorized": "ai_data_authorized",
         "aiConsentVersion": "ai_consent_version",
@@ -660,7 +671,7 @@ def update_user_profile(user_id: str, patch: dict) -> dict:
         if key not in patch:
             continue
         value = patch[key]
-        if key in {"privacyAccepted", "aiDataAuthorized", "rawAudioCandidateConsent"}:
+        if key in {"privacyAccepted", "aiDataAuthorized", "rawAudioCandidateConsent", "excludeSoundReminder", "excludeLightReminder"}:
             value = int(bool(value))
         updates.append(f"{column}=?")
         values.append(value)

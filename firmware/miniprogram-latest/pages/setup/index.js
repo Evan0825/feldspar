@@ -150,7 +150,7 @@ Page({
         deviceId: connection.deviceId || deviceId,
         serialNumber: resolvedSerial,
         advertisedName: resolvedSerial,
-        name: '好眠睡眠主机',
+        name: '月石睡眠主机',
         provisioned: true,
         protocolVersion: connection.protocolVersion || '1.0',
       }

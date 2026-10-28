@@ -1,5 +1,5 @@
 <view class="page tonight-page">
-  <view class="brand">好眠 SnoozMate</view><view class="page-title">{{fromAiPlan ? '手动设置今晚方案' : '今晚怎么守护'}}</view>
+  <view class="brand">月石</view><view class="page-title">{{fromAiPlan ? '手动设置今晚方案' : '今晚怎么守护'}}</view>
   <view class="page-lead">这些设置只在设备安全范围内生效，夜间判断与停止仍由月石床头主机本地完成。</view>
   <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取今晚设置</text><text class="state-copy">正在同步设备内的安全参数。</text></view>
   <state-banner wx:elif="{{loadError}}" tone="danger" title="{{loadError.title}}" detail="{{loadError.detail}}" retryable="{{loadError.retryable}}" action="{{loadError.action}}" bindretry="retry" bindaction="handleServiceAction" />

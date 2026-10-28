@@ -209,6 +209,8 @@ async def login(req: LoginRequest, request: Request):
         "id": user_id,
         "nickname": user.get("nickname") or "月石用户",
         "sleepMode": user.get("sleep_mode") or "shared",
+        "excludeSoundReminder": bool(user.get("exclude_sound_reminder", 1)),
+        "excludeLightReminder": bool(user.get("exclude_light_reminder", 1)),
         "privacyAccepted": bool(user.get("privacy_accepted")),
         "aiDataAuthorized": bool(user.get("ai_data_authorized")),
         "aiConsentVersion": user.get("ai_consent_version") or "",
@@ -551,6 +553,10 @@ def save_me_profile(authorization: str = Header(default=""), body: dict = None):
         "nickname": "nickname",
         "sleepMode": "sleepMode",
         "sleep_mode": "sleepMode",
+        "excludeSoundReminder": "excludeSoundReminder",
+        "exclude_sound_reminder": "excludeSoundReminder",
+        "excludeLightReminder": "excludeLightReminder",
+        "exclude_light_reminder": "excludeLightReminder",
         "privacyAccepted": "privacyAccepted",
         "privacy_accepted": "privacyAccepted",
         "aiDataAuthorized": "aiDataAuthorized",
@@ -569,6 +575,9 @@ def save_me_profile(authorization: str = Header(default=""), body: dict = None):
             raise HTTPException(status_code=400, detail="nickname 长度必须为 1-40")
     if "sleepMode" in patch and patch["sleepMode"] not in {"solo", "shared"}:
         raise HTTPException(status_code=400, detail="sleepMode 必须为 solo 或 shared")
+    for key in ("excludeSoundReminder", "excludeLightReminder"):
+        if key in patch and not isinstance(patch[key], bool):
+            raise HTTPException(status_code=400, detail=f"{key} 必须为布尔值")
     return update_user_profile(user_id, patch)
 
 

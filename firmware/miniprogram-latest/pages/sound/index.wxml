@@ -1,5 +1,5 @@
 <view class="page sound-page">
-  <view class="brand">好眠 SnoozMate</view><view class="page-title">把声音留在设备里</view>
+  <view class="brand">月石</view><view class="page-title">把声音留在设备里</view>
   <view class="page-lead">连接蓝牙控制并读取设备状态。音效需先同步到设备；当前固件支持整晚播放。</view>
   <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取声音状态</text><text class="state-copy">正在同步设备本地播放设置。</text></view>
   <state-banner wx:elif="{{loadError}}" tone="danger" title="{{loadError.title}}" detail="{{loadError.detail}}" retryable="{{loadError.retryable}}" action="{{loadError.action}}" bindretry="retry" bindaction="handleServiceAction" />

@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "好眠 AI",
+  "navigationBarTitleText": "月石 AI",
   "enablePullDownRefresh": true,
   "usingComponents": {
     "state-banner": "/components/state-banner/index"

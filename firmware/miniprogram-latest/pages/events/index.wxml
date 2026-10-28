@@ -1,5 +1,5 @@
 <view class="page events-page">
-  <view class="brand">好眠 SnoozMate</view><view class="page-title">昨夜发生了什么</view><view class="page-lead">这里只展示结构化事件。整夜原始录音默认不上云，也不提供回放。</view>
+  <view class="brand">月石</view><view class="page-title">昨夜发生了什么</view><view class="page-lead">这里只展示结构化事件。整夜原始录音默认不上云，也不提供回放。</view>
   <view class="night-scope" wx:if="{{nightLabel}}"><text class="night-scope-date">{{nightLabel}}</text><text class="night-scope-copy">只展示最近一晚；白天调试记录不会计入。</text></view>
   <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取夜间事件</text><text class="state-copy">正在同步设备产生的结构化记录。</text></view>
   <state-banner wx:elif="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="retry" bindaction="handleServiceAction" />

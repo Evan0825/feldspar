@@ -47,3 +47,7 @@ Windows 请使用 WSL2 执行以上主机命令，或将 Python 路径改为 `.v
 ## 参与与维护
 
 阅读 [贡献指南](CONTRIBUTING.md) 与 [维护规划](docs/MAINTENANCE.md)。本次检查的命令、数量、环境和限制见 [验证记录](docs/VALIDATION.md)。
+
+## 月石界面规范
+
+后续界面工作遵循 [项目约定](AGENTS.md) 与 [UI 风格和交互偏好](docs/ui-style-preferences.md)，视觉依据为 [最新四屏确认图](docs/design/moonstone-ui-approved-20261028.png)。本次更新仅涉及小程序界面、偏好保存与方案状态展示；不启用自动干预或部署生产服务。

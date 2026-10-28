@@ -2,6 +2,8 @@ const profile = {
   id: 'demo-user',
   nickname: '月石用户',
   sleepMode: 'shared',
+  excludeSoundReminder: true,
+  excludeLightReminder: true,
   privacyAccepted: false,
   aiDataAuthorized: false, mqttAudioAuthorized: false,
 }

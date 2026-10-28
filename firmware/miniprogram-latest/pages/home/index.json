@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "好眠 SnoozMate",
+  "navigationBarTitleText": "月石",
   "enablePullDownRefresh": true,
   "usingComponents": {
     "state-banner": "/components/state-banner/index"

@@ -323,7 +323,7 @@ function parseAdvertisement(device, prefix = BLE_PROTOCOL.namePrefix) {
     transportDeviceId: device.deviceId,
     serialNumber: `${expectedPrefix}${suffix}`,
     advertisedName: `${expectedPrefix}${suffix}`,
-    name: '好眠睡眠主机',
+    name: '月石睡眠主机',
     mode: 'ble-local',
     signal: '已发现',
     rssi: Number(device.RSSI || -100),

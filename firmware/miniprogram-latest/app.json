@@ -2,6 +2,7 @@
   "pages": [
     "pages/onboarding/index",
     "pages/home/index",
+    "pages/strategy/index",
     "pages/report/index",
     "pages/ai/index",
     "pages/trends/index",
@@ -20,7 +21,7 @@
     "pages/ai-plan/index"
   ],
   "window": {
-    "navigationBarTitleText": "好眠 SnoozMate",
+    "navigationBarTitleText": "月石",
     "navigationBarBackgroundColor": "#F6F0E7",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#F6F0E7",

@@ -1,5 +1,5 @@
 <view class="page device-page">
-  <view class="brand">好眠 SnoozMate</view><view class="page-title">月石设备</view>
+  <view class="brand">月石</view><view class="page-title">月石设备</view>
   <view class="page-lead">查看实际连接、采集和安全控制状态。</view>
   <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取设备状态</text><text class="state-copy">正在同步主机、振动片与本地检测信息。</text></view>
   <state-banner wx:elif="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="retry" bindaction="handleServiceAction" />

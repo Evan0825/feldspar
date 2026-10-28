@@ -1,9 +1,14 @@
 const services = require('../../services/index')
+const { normalizePreferences } = require('../../domain/user-preferences')
 const { runServiceErrorAction, toUserError } = require('../../domain/service-error')
 
 Page({
   data: {
     phase: 'login',
+    editingProfile: false,
+    preferencesLoaded: false,
+    excludeSoundReminder: true,
+    excludeLightReminder: true,
     loading: false,
     submitting: false,
     error: null,
@@ -13,6 +18,11 @@ Page({
   },
 
   onLoad(options = {}) {
+    if (options.edit === '1') {
+      this.setData({ editingProfile: true, phase: 'profile' })
+      if (wx.setNavigationBarTitle) wx.setNavigationBarTitle({ title: '个性化偏好' })
+      return this.loadPreferences()
+    }
     this._reauth = options.reauth === '1'
     if (!this._reauth && wx.getStorageSync('haomian-setup-complete')) {
       wx.switchTab({ url: '/pages/home/index' })
@@ -45,7 +55,7 @@ Page({
       if (this._reauth && wx.getStorageSync('haomian-setup-complete')) {
         wx.removeStorageSync('haomian-setup-complete')
       }
-      this.setData({ phase: 'profile', nickname: result.profile.nickname, sleepMode: result.profile.sleepMode })
+      this.setData({ phase: 'profile', ...normalizePreferences(result.profile) })
     } catch (error) {
       this.setData({ error: toUserError(error, '微信登录') })
     } finally {
@@ -53,14 +63,37 @@ Page({
     }
   },
 
+  async loadPreferences() {
+    this.setData({ loading: true, error: null, preferencesLoaded: false })
+    try {
+      const profile = await services.auth.getProfile()
+      if (!profile) throw new Error('个人资料暂不可用')
+      this.setData({ ...normalizePreferences(profile), preferencesLoaded: true })
+    } catch (error) { this.setData({ error: toUserError(error, '个性化偏好') }) }
+    finally { this.setData({ loading: false }) }
+  },
+  toggleReminderExclusion(event) {
+    const key = event.currentTarget.dataset.key
+    if (this.data.submitting || (this.data.editingProfile && !this.data.preferencesLoaded) || !['excludeSoundReminder', 'excludeLightReminder'].includes(key)) return
+    this.setData({ [key]: !this.data[key] })
+  },
+  explainReminderPreferences() {
+    wx.showModal({ title: '提醒偏好', content: '排除项只限制自动提醒。助眠声音和夜灯仍可手动使用；振动为固定默认方式。', showCancel: false, confirmText: '知道了' })
+  },
+
   setNickname(event) { if (!this.data.submitting) this.setData({ nickname: event.detail.value }) },
   setSleepMode(event) { if (!this.data.submitting) this.setData({ sleepMode: event.currentTarget.dataset.mode }) },
 
   async saveProfile() {
-    if (this.data.submitting) return
+    if (this.data.submitting || (this.data.editingProfile && !this.data.preferencesLoaded)) return
     this.setData({ submitting: true, error: null })
     try {
-      await services.auth.saveProfile({ nickname: this.data.nickname.trim() || '月石用户', sleepMode: this.data.sleepMode })
+      const profile = await services.auth.saveProfile(normalizePreferences(this.data))
+      if (this.data.editingProfile) {
+        wx.setStorageSync('haomian-profile', profile)
+        wx.navigateBack()
+        return
+      }
       this.setData({ phase: 'privacy' })
     } catch (error) {
       this.setData({ error: toUserError(error, '个人资料') })
@@ -93,6 +126,7 @@ Page({
   },
 
   handleServiceAction(event) {
+    if (this.data.editingProfile && !this.data.preferencesLoaded) return this.loadPreferences()
     const retry = this.data.phase === 'login'
       ? () => this.login()
       : this.data.phase === 'profile'

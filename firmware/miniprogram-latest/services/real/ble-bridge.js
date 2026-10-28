@@ -394,7 +394,7 @@ function createWxBleBridge(config = {}) {
     await openAdapter()
     const known = knownDevices.get(deviceId)
     if (!known || !known.transportDeviceId) {
-      throw bridgeError('NOT_FOUND', '请重新搜索附近的好眠设备')
+      throw bridgeError('NOT_FOUND', '请重新搜索附近的月石设备')
     }
 
     let linkCreated = false
@@ -406,7 +406,7 @@ function createWxBleBridge(config = {}) {
       linkCreated = true
       const services = await callWx('getBLEDeviceServices', { deviceId: known.transportDeviceId })
       const service = (services.services || []).find((item) => uuidMatches(item.uuid, ids.service))
-      if (!service) throw bridgeError('IDENTITY_MISMATCH', '设备未提供 0xFF00 好眠服务')
+      if (!service) throw bridgeError('IDENTITY_MISMATCH', '设备未提供 0xFF00 月石服务')
 
       const readCharacteristics = async () => callWx('getBLEDeviceCharacteristics', {
         deviceId: known.transportDeviceId,
@@ -528,7 +528,7 @@ function createWxBleBridge(config = {}) {
       ? found.filter((item) => item.deviceId === targetId)
       : found
     if (!candidates.length) {
-      throw lastError || bridgeError('NOT_FOUND', '附近没有发现已绑定的好眠设备')
+      throw lastError || bridgeError('NOT_FOUND', '附近没有发现已绑定的月石设备')
     }
     for (const candidate of candidates) {
       try {
@@ -538,7 +538,7 @@ function createWxBleBridge(config = {}) {
         lastError = error
       }
     }
-    throw lastError || bridgeError('CONNECT_FAILED', '未能连接好眠设备')
+    throw lastError || bridgeError('CONNECT_FAILED', '未能连接月石设备')
   }
 
   async function writeBytes(state, characteristicId, bytes, writeType = 'write') {

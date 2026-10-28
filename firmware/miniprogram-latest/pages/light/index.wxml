@@ -1,5 +1,5 @@
 <view class="page light-page">
-  <view class="brand night-brand">好眠 SnoozMate</view><view class="page-title night-title">琥珀夜灯</view><view class="page-lead night-lead">夜间只使用低亮暖琥珀光，减少对再次入睡的干扰。</view>
+  <view class="brand night-brand">月石</view><view class="page-title night-title">琥珀夜灯</view><view class="page-lead night-lead">夜间只使用低亮暖琥珀光，减少对再次入睡的干扰。</view>
   <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取夜灯状态</text><text class="state-copy">正在同步低亮暖琥珀光设置。</text></view>
   <state-banner wx:elif="{{loadError}}" tone="danger" title="{{loadError.title}}" detail="{{loadError.detail}}" retryable="{{loadError.retryable}}" action="{{loadError.action}}" bindretry="retry" bindaction="handleServiceAction" />
   <view class="empty-state night-empty" wx:elif="{{phase === 'empty'}}">暂无夜灯设置。请确认月石床头主机已连接。</view>

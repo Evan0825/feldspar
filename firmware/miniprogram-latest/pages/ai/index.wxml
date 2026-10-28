@@ -54,7 +54,7 @@
       </view>
 
       <view class="command-banner" wx:if="{{activeCommand && activeCommand.status !== 'applied' && !planOpen}}" bindtap="openActiveCommand"><view><text>月石正在校验今晚设置</text><text>完成设备回读后才会生效</text></view><text class="arrow">›</text></view>
-      <view class="ask-card" bindtap="openChat"><view class="ask-icon"><image src="/images/tab-ai-active.png" mode="aspectFit" /></view><view class="ask-copy"><text>问好眠 AI</text><text>{{overview.hasData ? '追问昨夜变化与今晚建议' : '了解如何完成有效记录'}}</text></view><text class="arrow">›</text></view>
+      <view class="ask-card" bindtap="openChat"><view class="ask-icon"><image src="/images/tab-ai-active.png" mode="aspectFit" /></view><view class="ask-copy"><text>问月石 AI</text><text>{{overview.hasData ? '追问昨夜变化与今晚建议' : '了解如何完成有效记录'}}</text></view><text class="arrow">›</text></view>
     </block>
   </block>
 

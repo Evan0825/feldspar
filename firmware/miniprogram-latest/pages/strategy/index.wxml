@@ -1,0 +1,27 @@
+<view class="page strategy-page">
+  <view class="state-card" wx:if="{{loading}}">正在读取方案</view>
+  <state-banner wx:if="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="retry" bindaction="handleServiceAction" />
+  <view class="strategy-surface" wx:if="{{!loading && strategy && !error}}">
+    <view class="stage-list">
+      <view class="stage-row {{item.current ? 'current' : ''}} {{item.complete ? 'complete' : ''}}" wx:for="{{strategy.stages}}" wx:key="id">
+        <view class="stage-marker"><view class="stage-dot" /><view class="stage-line" wx:if="{{index < 3}}" /></view>
+        <view class="stage-copy"><text class="stage-title">{{item.title}}</text><text class="stage-detail">{{item.detail}}</text></view>
+        <text class="stage-badge" wx:if="{{item.current}}">{{strategy.badge}}</text>
+      </view>
+    </view>
+    <view class="detail-row"><image src="/images/ui/document.png" mode="aspectFit" /><text>运行方式</text><text>{{strategy.operation}}</text></view>
+    <view class="detail-row"><image src="/images/ui/sound.png" mode="aspectFit" /><text>默认提醒</text><text>振动</text></view>
+    <view class="detail-row"><image src="/images/ui/ban.png" mode="aspectFit" /><text>提醒限制</text><text>{{strategy.restriction}}</text></view>
+    <view class="transition-note">{{strategy.transition}}</view>
+  </view>
+  <block wx:if="{{!loading && strategy && !error}}">
+    <button hover-class="none" class="parameters-toggle" bindtap="toggleParameters"><text>当前参数</text><text>{{parametersOpen ? '⌄' : '›'}}</text></button>
+    <view class="parameters" wx:if="{{parametersOpen && settings}}">
+      <view><text>灵敏度</text><text>{{settings.sensitivity === 1 ? '克制' : settings.sensitivity === 3 ? '积极' : '均衡'}}</text></view>
+      <view><text>最大振动</text><text>{{settings.maxVibrationLevel}} 级</text></view>
+      <view><text>入睡保护</text><text>{{settings.sleepProtectionMinutes}} 分钟</text></view>
+      <view><text>每晚最多</text><text>{{settings.nightlyInterventionLimit}} 次</text></view>
+      <button hover-class="none" class="secondary-button" bindtap="openSettings">查看今晚设置</button>
+    </view>
+  </block>
+</view>

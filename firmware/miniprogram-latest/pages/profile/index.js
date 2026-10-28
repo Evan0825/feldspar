@@ -65,6 +65,7 @@ Page({
       this.setData({ syncing: false })
     }
   },
+  openPreferences() { wx.navigateTo({ url: '/pages/onboarding/index?edit=1' }) },
   openDevice() { wx.navigateTo({ url: '/pages/device/index' }) },
   toggleSection(event) {
     const section = event.currentTarget.dataset.section

@@ -1,5 +1,5 @@
 <view class="page trends-page">
-  <view class="brand">好眠 SnoozMate</view><view class="page-title">最近七晚</view><view class="page-lead">把单晚事件放进连续趋势里看，更容易发现体位与响应的变化。</view>
+  <view class="brand">月石</view><view class="page-title">最近七晚</view><view class="page-lead">把单晚事件放进连续趋势里看，更容易发现体位与响应的变化。</view>
 
   <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在加载趋势</text><text class="state-copy">正在汇总最近七晚的结构化记录。</text></view>
   <block wx:if="{{!loading && phase === 'data'}}">
