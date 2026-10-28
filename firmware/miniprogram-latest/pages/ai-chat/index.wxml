@@ -10,24 +10,22 @@
 
     <scroll-view class="conversation-scroll" scroll-y="true" scroll-into-view="{{scrollTarget}}" wx:if="{{!loading && interpretationId}}">
       <view class="assistant-intro" wx:if="{{!messages.length}}">
-        <text class="message-role">月石 AI · 本次解读</text>
+        <text class="message-role">AI · 本次解读</text>
         <text class="context-conclusion">{{contextConclusion}}</text>
         <text class="context-summary">{{contextSummary}}</text>
-        <text class="context-prompt">你可以继续追问这份记录，我会只基于结构化数据回答。</text>
       </view>
       <view class="carried-memory" wx:if="{{!messages.length && carriedMemory}}">
         <text>已带上关键背景</text>
-        <text>上一段对话已整理，今晚方案与已确认偏好会继续保留。</text>
+        <text>上一段对话摘录可能不完整。</text>
       </view>
       <view class="quick-row" wx:if="{{!messages.length}}"><button hover-class="none" wx:for="{{quickQuestions}}" wx:key="*this" class="quick-chip" data-question="{{item}}" bindtap="useQuickQuestion">{{item}}</button></view>
 
       <button hover-class="none" class="memory-fold" wx:if="{{collapsedMessageCount}}" bindtap="toggleOlderMessages">
         <text>{{olderMessagesExpanded ? '收起较早对话' : '已整理 ' + collapsedMessageCount + ' 条较早对话'}}</text>
-        <text>{{olderMessagesExpanded ? '保留最近内容' : '关键背景将继续保留 · 展开查看'}}</text>
       </button>
 
       <view id="{{item.messageId}}" class="message {{item.role}} {{item.answerKind}}" wx:for="{{visibleMessages}}" wx:key="messageId">
-        <text class="message-role">{{item.role === 'user' ? '我' : ('月石 AI · ' + (item.source === 'llm' ? '云端模型' : '本地规则'))}}</text>
+        <text class="message-role">{{item.role === 'user' ? '我' : ('AI · ' + (item.source === 'llm' ? '云端模型' : '本地规则'))}}</text>
         <text class="message-text">{{item.text}}</text>
         <view class="answer-sections" wx:if="{{item.role === 'assistant' && item.sections && (item.sections.canExplain || item.sections.cannotDetermine || item.sections.nextStep)}}">
           <view wx:if="{{item.sections.canExplain}}"><text>可以说明</text><text>{{item.sections.canExplain}}</text></view>
@@ -36,10 +34,10 @@
         </view>
         <button hover-class="none" wx:if="{{item.role === 'assistant' && item.answerKind === 'trend'}}" class="inline-action" bindtap="openPlan">查看今晚温和方案</button>
       </view>
-      <view class="answering" wx:if="{{sending}}">月石 AI 正在回答…</view>
+      <view class="answering" wx:if="{{sending}}">AI 正在回答…</view>
       <view class="context-limit-card" wx:if="{{contextLimitReached}}">
         <text>本次对话已较长</text>
-        <text>为保持解读准确，请整理后新建对话。已确认的关键背景会继续保留。</text>
+        <text>可整理后继续，摘录可能不完整。</text>
         <view><button hover-class="none" bindtap="continueInNewConversation">整理后新建对话</button><button hover-class="none" bindtap="openHistory">查看聊天记录</button></view>
       </view>
       <view id="chat-end"></view>

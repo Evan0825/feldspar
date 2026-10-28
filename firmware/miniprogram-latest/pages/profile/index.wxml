@@ -1,5 +1,5 @@
 <view class="page profile-page">
-  <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取个人与设备资料</text><text class="state-copy">正在同步隐私设置与设备状态。</text></view>
+  <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取个人与设备资料</text></view>
   <state-banner wx:elif="{{loadError}}" tone="danger" title="{{loadError.title}}" detail="{{loadError.detail}}" retryable="{{loadError.retryable}}" action="{{loadError.action}}" bindretry="retry" bindaction="handleServiceAction" />
   <view class="empty-state" wx:elif="{{phase === 'empty'}}">暂无个人与设备资料。请重新登录或完成设备绑定。</view>
 
@@ -17,7 +17,7 @@
       <view class="section-detail" wx:if="{{expandedSection === 'ai'}}">
         <view class="authorization-row"><view><text>AI 读取睡眠资料</text><text>{{profile.aiDataAuthorized ? '已授权' : '未授权'}}</text></view><switch color="#D28B2D" checked="{{profile.aiDataAuthorized}}" disabled="{{authorizing}}" bindchange="toggleAiAuthorization" /></view>
         <view class="authorization-row"><view><text>云端实时声音分析</text><text>{{profile.mqttAudioAuthorized ? '已授权' : '未授权'}}</text></view><switch color="#D28B2D" checked="{{profile.mqttAudioAuthorized}}" disabled="{{authorizing}}" bindchange="toggleMqttAudioAuthorization" /></view>
-        <text>仅在本地规则发现疑似鼾声时上传短音频窗，使用 MQTT/TLS 加密传输，不保存整夜连续录音。</text>
+        <text>仅上传疑似鼾声短音频供云端分析，不保存整夜录音。</text>
         <text>AI 解读仍只使用结构化事件、夜间摘要、连续趋势与主动反馈。</text>
       </view>
       <view class="menu-row" bindtap="openDevice"><image src="/images/menu-update.png" mode="aspectFit" /><text class="menu-label">模型与固件更新</text><text class="arrow">›</text></view>

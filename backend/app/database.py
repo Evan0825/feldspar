@@ -135,8 +135,8 @@ CREATE TABLE IF NOT EXISTS users (
  nickname VARCHAR(255) NOT NULL DEFAULT '',
  avatar VARCHAR(512) NOT NULL DEFAULT '',
  sleep_mode VARCHAR(32) NOT NULL DEFAULT 'shared',
- exclude_sound_reminder TINYINT NOT NULL DEFAULT 1,
- exclude_light_reminder TINYINT NOT NULL DEFAULT 1,
+ exclude_sound_reminder TINYINT NOT NULL DEFAULT 0,
+ exclude_light_reminder TINYINT NOT NULL DEFAULT 0,
  privacy_accepted TINYINT NOT NULL DEFAULT 0,
  ai_data_authorized TINYINT NOT NULL DEFAULT 0,
  ai_consent_version VARCHAR(64) NOT NULL DEFAULT '',
@@ -377,8 +377,8 @@ def _init_mysql_db():
     try:
         conn.executescript(MYSQL_SCHEMA)
         _add_column(conn, "users", "sleep_mode", "VARCHAR(32) NOT NULL DEFAULT 'shared'")
-        _add_column(conn, "users", "exclude_sound_reminder", "TINYINT NOT NULL DEFAULT 1")
-        _add_column(conn, "users", "exclude_light_reminder", "TINYINT NOT NULL DEFAULT 1")
+        _add_column(conn, "users", "exclude_sound_reminder", "TINYINT NOT NULL DEFAULT 0")
+        _add_column(conn, "users", "exclude_light_reminder", "TINYINT NOT NULL DEFAULT 0")
         _add_column(conn, "users", "privacy_accepted", "TINYINT NOT NULL DEFAULT 0")
         _add_column(conn, "users", "ai_data_authorized", "TINYINT NOT NULL DEFAULT 0")
         _add_column(conn, "users", "ai_consent_version", "VARCHAR(64) NOT NULL DEFAULT ''")
@@ -410,7 +410,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT UNIQUE NOT NULL,
             openid TEXT DEFAULT '', nickname TEXT DEFAULT '', avatar TEXT DEFAULT '',
             sleep_mode TEXT DEFAULT 'shared', privacy_accepted INTEGER DEFAULT 0,
-            exclude_sound_reminder INTEGER NOT NULL DEFAULT 1, exclude_light_reminder INTEGER NOT NULL DEFAULT 1,
+            exclude_sound_reminder INTEGER NOT NULL DEFAULT 0, exclude_light_reminder INTEGER NOT NULL DEFAULT 0,
             ai_data_authorized INTEGER DEFAULT 0, ai_consent_version TEXT DEFAULT '',
             raw_audio_candidate_consent INTEGER DEFAULT 0,
             session_token TEXT DEFAULT '', session_expires_at INTEGER DEFAULT 0,
@@ -525,8 +525,8 @@ def init_db():
         _add_column(conn, "devices", "config_version", "INTEGER DEFAULT 1")
         _add_column(conn, "events", "night_id", "TEXT DEFAULT ''")
         _add_column(conn, "users", "sleep_mode", "TEXT DEFAULT 'shared'")
-        _add_column(conn, "users", "exclude_sound_reminder", "INTEGER NOT NULL DEFAULT 1")
-        _add_column(conn, "users", "exclude_light_reminder", "INTEGER NOT NULL DEFAULT 1")
+        _add_column(conn, "users", "exclude_sound_reminder", "INTEGER NOT NULL DEFAULT 0")
+        _add_column(conn, "users", "exclude_light_reminder", "INTEGER NOT NULL DEFAULT 0")
         _add_column(conn, "users", "privacy_accepted", "INTEGER DEFAULT 0")
         _add_column(conn, "users", "ai_data_authorized", "INTEGER DEFAULT 0")
         _add_column(conn, "users", "ai_consent_version", "TEXT DEFAULT ''")
@@ -562,8 +562,8 @@ def upsert_user_session(user_id: str, openid: str, session_token: str, expires_a
     conn = get_conn()
     try:
         conn.execute(
-            """INSERT INTO users(user_id,openid,nickname,session_token,session_expires_at,created_at,updated_at)
-               VALUES(?,?,?,?,?,?,?)
+            """INSERT INTO users(user_id,openid,nickname,session_token,session_expires_at,created_at,updated_at,exclude_sound_reminder,exclude_light_reminder)
+               VALUES(?,?,?,?,?,?,?,0,0)
                ON CONFLICT(user_id) DO UPDATE SET
                  openid=excluded.openid,
                  session_token=excluded.session_token,

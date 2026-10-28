@@ -7,8 +7,8 @@ Page({
     phase: 'login',
     editingProfile: false,
     preferencesLoaded: false,
-    excludeSoundReminder: true,
-    excludeLightReminder: true,
+    excludeSoundReminder: false,
+    excludeLightReminder: false,
     loading: false,
     submitting: false,
     error: null,
@@ -78,7 +78,7 @@ Page({
     this.setData({ [key]: !this.data[key] })
   },
   explainReminderPreferences() {
-    wx.showModal({ title: '提醒偏好', content: '排除项只限制自动提醒。助眠声音和夜灯仍可手动使用；振动为固定默认方式。', showCancel: false, confirmText: '知道了' })
+    wx.showModal({ title: '提醒方案', content: '振动固定；其余取消勾选即不纳入方案。此处不直接启动提醒，助眠声音和夜灯仍可手动控制。', showCancel: false, confirmText: '知道了' })
   },
 
   setNickname(event) { if (!this.data.submitting) this.setData({ nickname: event.detail.value }) },

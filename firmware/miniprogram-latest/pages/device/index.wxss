@@ -22,7 +22,7 @@
 .detail-row view { flex: 1; }
 .detail-row view text { display: block; }
 .detail-row view text:first-child { font-weight: 650; }
-.detail-row view text:last-child { margin-top: 7rpx; color: #675d53; font-size: 20rpx; }
+.detail-row view text:nth-child(2) { margin-top: 7rpx; color: #675d53; font-size: 20rpx; }
 .value { color: #675d53; font-size: 21rpx; }
 .value.ok { color: #536c2d; font-weight: 600; }
 .value.warn { color: #a76522; }

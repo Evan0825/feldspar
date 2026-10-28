@@ -76,7 +76,7 @@ Page({
 
   closeHistory() {
     this.setData({ mode: 'conversation', error: null })
-    if (typeof wx.setNavigationBarTitle === 'function') wx.setNavigationBarTitle({ title: '问月石 AI' })
+    if (typeof wx.setNavigationBarTitle === 'function') wx.setNavigationBarTitle({ title: 'AI' })
   },
 
   startNewConversation() {
@@ -103,7 +103,7 @@ Page({
       scrollTarget: '',
       error: null,
     })
-    if (typeof wx.setNavigationBarTitle === 'function') wx.setNavigationBarTitle({ title: '问月石 AI' })
+    if (typeof wx.setNavigationBarTitle === 'function') wx.setNavigationBarTitle({ title: 'AI' })
   },
 
   async openSession(event) {
@@ -126,7 +126,7 @@ Page({
         messages: session.messages || [],
       })
       this.refreshConversationState()
-      if (typeof wx.setNavigationBarTitle === 'function') wx.setNavigationBarTitle({ title: '问月石 AI' })
+      if (typeof wx.setNavigationBarTitle === 'function') wx.setNavigationBarTitle({ title: 'AI' })
     } catch (error) {
       this.setData({ error: toUserError(error, '聊天记录') })
     } finally {

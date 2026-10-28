@@ -23,6 +23,7 @@ Page({
     canStop: false,
     stopping: false,
     demoMode: services.serviceMode === 'mock',
+    showDemoPanel: false,
     settings: { maxVibrationLevel: 3 },
     loopSteps: ['感知', '判断', '提醒', '验证', '停止'],
     demoPhases: [
@@ -118,6 +119,7 @@ Page({
       this.setData({ loading: false })
     }
   },
+  toggleDemoPanel() { this.setData({ showDemoPanel: !this.data.showDemoPanel }) },
   openTonight() { wx.navigateTo({ url: '/pages/tonight/index' }) },
   backTonight() { wx.switchTab({ url: '/pages/home/index' }) },
 })

@@ -1,11 +1,10 @@
 <view class="page report-page">
-  <view class="page-title">睡眠</view>
   <view class="scope-tabs">
     <view class="scope-tab {{scope === 'night' ? 'active' : ''}}" data-scope="night" bindtap="setScope">昨夜</view>
     <view class="scope-tab {{scope === 'week' ? 'active' : ''}}" data-scope="week" bindtap="setScope">7 晚</view>
   </view>
 
-  <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取睡眠记录</text><text class="state-copy">正在同步结构化夜间摘要。</text></view>
+  <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取睡眠记录</text></view>
 
   <block wx:if="{{!loading && phase === 'data'}}">
     <state-banner wx:if="{{report.dataSource === 'simulated'}}" tone="info" title="当前展示模拟测试数据" detail="这些记录只用于联调，不代表真实睡眠情况。" />
@@ -23,7 +22,7 @@
       </view>
       <button hover-class="none" class="primary-button detail-button" bindtap="openEvents">查看夜间详情</button>
       <view class="feedback-link" bindtap="openFeedback"><text>晨间反馈</text><view><text>{{feedback ? '已记录' : '待填写'}}</text><text class="arrow">›</text></view></view>
-      <view class="interpretation-card" bindtap="openInterpretation"><view class="row"><text class="eyebrow">{{interpretation ? interpretation.sourceLabel : '结构化摘要'}}</text><text class="arrow">›</text></view><text class="interpretation-title">{{interpretation ? interpretation.conclusion : '昨夜记录已整理'}}</text><text class="interpretation-copy">{{interpretation ? interpretation.summary : 'AI 暂不可用，以下数据仍可正常查看。'}}</text></view>
+      <view class="interpretation-card" bindtap="openInterpretation"><view class="row"><text class="eyebrow">{{interpretation ? interpretation.sourceLabel : '结构化摘要'}}</text><text class="arrow">›</text></view><text class="interpretation-title">{{interpretation ? interpretation.conclusion : '昨夜记录已整理'}}</text><text class="interpretation-copy">{{interpretation ? interpretation.summary : 'AI 暂不可用，可查看记录。'}}</text></view>
       <view class="card evidence-card"><view class="row"><text class="evidence-title">仰卧关联说明</text><text class="attention">{{guidance.label}}</text></view><text>{{report.supineSnoreTrend}}</text><text>{{guidance.action}}</text></view>
     </block>
 

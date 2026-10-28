@@ -1,18 +1,18 @@
 <view class="page ai-page">
   <block wx:if="{{mode === 'overview'}}">
     <view class="welcome-row">
-      <text class="greeting">{{greeting}}</text>
+
       <button hover-class="none" class="records-link" wx:if="{{!consentRequired}}" data-mode="records" bindtap="setMode">记录</button>
     </view>
-    <view class="hero-copy"><text class="hero-title">{{heroTitle}}</text></view>
+    <view class="hero-copy"><text class="hero-title">睡眠解读</text></view>
 
     <view class="state-card" wx:if="{{loading}}">正在整理这份记录</view>
     <state-banner wx:if="{{!loading && error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" bindretry="load" />
 
     <view class="consent-card" wx:if="{{!loading && !error && consentRequired}}">
-      <text class="consent-title">先由你决定 AI 可以读什么</text>
+      <text class="consent-title">AI 数据授权</text>
       <text class="consent-copy">AI 仅读取结构化夜间记录、趋势和主动反馈，默认不读取整夜原始录音。</text>
-      <button hover-class="none" class="primary-button consent-button" disabled="{{authorizing}}" bindtap="requestAiConsent">{{authorizing ? '正在确认' : '询问并授权'}}</button>
+      <button hover-class="none" class="primary-button consent-button" disabled="{{authorizing}}" bindtap="requestAiConsent">{{authorizing ? '正在确认' : '授权使用'}}</button>
     </view>
 
     <block wx:if="{{!loading && overview}}">
@@ -54,12 +54,12 @@
       </view>
 
       <view class="command-banner" wx:if="{{activeCommand && activeCommand.status !== 'applied' && !planOpen}}" bindtap="openActiveCommand"><view><text>月石正在校验今晚设置</text><text>完成设备回读后才会生效</text></view><text class="arrow">›</text></view>
-      <view class="ask-card" bindtap="openChat"><view class="ask-icon"><image src="/images/tab-ai-active.png" mode="aspectFit" /></view><view class="ask-copy"><text>问月石 AI</text><text>{{overview.hasData ? '追问昨夜变化与今晚建议' : '了解如何完成有效记录'}}</text></view><text class="arrow">›</text></view>
+      <view class="ask-card" bindtap="openChat"><view class="ask-icon"><image src="/images/tab-ai-active.png" mode="aspectFit" /></view><view class="ask-copy"><text>问 AI</text><text>{{overview.hasData ? '追问昨夜变化与今晚建议' : '了解如何完成有效记录'}}</text></view><text class="arrow">›</text></view>
     </block>
   </block>
 
   <block wx:if="{{mode === 'records'}}">
-    <view class="records-toolbar"><button hover-class="none" class="back-link" data-mode="overview" bindtap="setMode">‹ AI 首页</button></view>
+    <view class="records-toolbar"><button hover-class="none" class="back-link" data-mode="overview" bindtap="setMode">‹ AI</button></view>
     <view class="record-filter" role="tablist">
       <button hover-class="none" class="filter-chip {{recordFilter === 'all' ? 'active' : ''}}" data-filter="all" bindtap="setRecordFilter">全部</button>
       <button hover-class="none" class="filter-chip {{recordFilter === 'single-night' ? 'active' : ''}}" data-filter="single-night" bindtap="setRecordFilter">单晚</button>
@@ -72,6 +72,6 @@
     <view class="data-boundary">仅保存 AI 结论与结构化依据，不保存连续原始录音。</view>
   </block>
 
-  <view class="data-boundary" wx:if="{{mode === 'overview'}}">默认不上传整夜原始录音。</view>
-  <view class="safe-note">用于趋势观察与体位提醒，不替代医疗检查</view>
+  <view class="data-boundary" wx:if="{{mode === 'overview' && !consentRequired}}">默认不上传整夜原始录音。</view>
+  <view class="safe-note">不替代医疗检查</view>
 </view>

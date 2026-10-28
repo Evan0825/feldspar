@@ -38,7 +38,7 @@
     "backgroundColor": "#FFF9F0",
     "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/home/index", "text": "今晚", "iconPath": "images/tab-tonight.png", "selectedIconPath": "images/tab-tonight-active.png" },
+      { "pagePath": "pages/home/index", "text": "月石", "iconPath": "images/tab-tonight.png", "selectedIconPath": "images/tab-tonight-active.png" },
       { "pagePath": "pages/report/index", "text": "睡眠", "iconPath": "images/tab-sleep.png", "selectedIconPath": "images/tab-sleep-active.png" },
       { "pagePath": "pages/ai/index", "text": "AI", "iconPath": "images/tab-ai.png", "selectedIconPath": "images/tab-ai-active.png" },
       { "pagePath": "pages/profile/index", "text": "我的", "iconPath": "images/tab-mine.png", "selectedIconPath": "images/tab-mine-active.png" }

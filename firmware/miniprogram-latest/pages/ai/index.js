@@ -1,14 +1,11 @@
 const services = require('../../services/index')
 const { toUserError } = require('../../domain/service-error')
-const { getTimeGreeting } = require('../../domain/time-greeting')
 const { buildDirectShare, buildTimelineShare } = require('../../domain/share-card')
 
 const ACTIVE_COMMAND_STATUSES = ['pending', 'validating', 'sending', 'ack-accepted', 'readback-pending']
 
 Page({
   data: {
-    greeting: getTimeGreeting(),
-    heroTitle: 'AI 解读由你授权',
     scope: 'single-night',
     mode: 'overview',
     overview: null,
@@ -16,7 +13,6 @@ Page({
     filteredRecords: [],
     recordFilter: 'all',
     activeCommand: null,
-    heroTitle: 'AI 解读由你授权',
     appliedSettings: null,
     evidenceOpen: false,
     expandedEvidenceId: '',
@@ -34,7 +30,6 @@ Page({
   },
 
   onShow() {
-    this.setData({ greeting: getTimeGreeting() })
     this.load()
   },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()) },
@@ -72,7 +67,6 @@ Page({
         filteredRecords: filterRecords(records, this.data.recordFilter),
         activeCommand,
         appliedSettings: commandAppliedSettings(activeCommand),
-        heroTitle: heroForOverview(overview),
       })
       if (overview.kind === 'single-night' && overview.hasData) this.ensureCandidate(overview)
     } catch (error) {
@@ -125,7 +119,7 @@ Page({
     })
     try {
       const overview = await services.ai.getOverview(scope)
-      if (requestId === this._scopeRequestId) this.setData({ overview, heroTitle: heroForOverview(overview) })
+      if (requestId === this._scopeRequestId) this.setData({ overview })
     } catch (error) {
       if (requestId === this._scopeRequestId) this.setData({ scope: previousScope, error: toUserError(error, 'AI 解读') })
     } finally {
@@ -136,9 +130,9 @@ Page({
   setMode(event) {
     const mode = event.currentTarget.dataset.mode
     if (!['overview', 'records'].includes(mode)) return
-    this.setData({ mode, greeting: getTimeGreeting() })
+    this.setData({ mode })
     if (typeof wx.setNavigationBarTitle === 'function') {
-      wx.setNavigationBarTitle({ title: mode === 'records' ? '解读记录' : '月石 AI' })
+      wx.setNavigationBarTitle({ title: mode === 'records' ? '解读记录' : 'AI' })
     }
   },
 
@@ -283,14 +277,6 @@ Page({
 
 function filterRecords(records, filter) {
   return filter === 'all' ? records : records.filter((item) => item.kind === filter)
-}
-
-function heroForOverview(overview) {
-  if (!overview || overview.hasData === false) return '昨夜暂无有效记录'
-  if (overview.kind === 'seven-night') return '最近七晚趋势已整理'
-  return overview.eventCount
-    ? `昨夜收到 ${overview.eventCount} 条有效记录`
-    : '昨夜记录已整理'
 }
 
 function commandAppliedSettings(command) {

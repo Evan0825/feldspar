@@ -14,7 +14,24 @@ test('reminder preferences exclude only sound and light; vibration is never edit
   assert.equal(value.excludeLightReminder, true)
   assert.equal('vibration' in value, false)
   assert.equal(reminderRestriction(value), '不使用灯光提醒')
-  assert.equal(reminderRestriction(normalizePreferences()), '不使用声音、灯光')
+  assert.equal(reminderRestriction(normalizePreferences()), '无')
+})
+
+test('new profiles allow both optional reminders while explicit exclusions survive round trips', async () => {
+  const { normalizePreferences } = require(path.join(root, 'domain/user-preferences'))
+  assert.equal(normalizePreferences().excludeSoundReminder, false)
+  assert.equal(normalizePreferences().excludeLightReminder, false)
+  let stored = { nickname: '小月', sleepMode: 'shared' }
+  const { page } = loadPage('onboarding', { auth: { getProfile: async () => stored, saveProfile: async value => { stored = { ...stored, ...value }; return stored } } })
+  await page.onLoad({ edit: '1' })
+  assert.equal(page.data.excludeSoundReminder, false)
+  page.toggleReminderExclusion({ currentTarget: { dataset: { key: 'excludeSoundReminder' } } })
+  await page.saveProfile()
+  assert.equal(stored.excludeSoundReminder, true)
+  assert.equal(stored.excludeLightReminder, false)
+  await page.loadPreferences()
+  assert.equal(page.data.excludeSoundReminder, true)
+  assert.equal(page.data.excludeLightReminder, false)
 })
 
 test('seven days never auto-activate or advance a personal strategy', () => {

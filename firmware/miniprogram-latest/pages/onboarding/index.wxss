@@ -32,8 +32,6 @@
 .mode-title { flex: 1; margin: 0; font-size: 26rpx; font-weight: 500; white-space: nowrap; }
 .radio-mark { width: 32rpx; height: 32rpx; border: 3rpx solid #aaa195; border-radius: 50%; }
 .active .radio-mark { border: 9rpx solid var(--amber-action); }
-.default-reminder { display: flex; justify-content: space-between; align-items: center; min-height: 126rpx; margin-top: 42rpx; padding: 24rpx; border: 1rpx solid #e9dfd1; border-radius: 24rpx; background: rgba(255,250,242,.7); font-size: 28rpx; }
-.default-reminder text:last-child { color: var(--muted); }
 .preferences-heading { display: flex; align-items: center; justify-content: space-between; margin: 32rpx 4rpx 12rpx; font-size: 28rpx; font-weight: 600; }
 .help-button { display: flex; align-items: center; justify-content: center; width: 88rpx; height: 88rpx; margin: -20rpx -20rpx -20rpx 0; padding: 24rpx; background: transparent; }
 .help-button image { width: 36rpx; height: 36rpx; }
@@ -46,7 +44,7 @@
 .preferences-save { margin-top: 48rpx; }
 
 .preferences-page .field-label, .preferences-page .preferences-heading { font-size: 34rpx; }
-.preferences-page .text-input, .preferences-page .default-reminder { font-size: 34rpx; }
+.preferences-page .text-input { font-size: 34rpx; }
 .preferences-page .mode-title { font-size: 30rpx; }
 .preferences-page .reminder-option, .preferences-page .preferences-save { font-size: 34rpx; }
 
@@ -54,7 +52,11 @@
 .preferences-page .text-input { height: 110rpx; }
 .preferences-page .field-label.second { margin-top: 54rpx; }
 .preferences-page .mode-option { min-height: 146rpx; }
-.preferences-page .default-reminder { min-height: 154rpx; margin-top: 56rpx; }
 .preferences-page .preferences-heading { margin-top: 44rpx; }
 .preferences-page .reminder-option { min-height: 144rpx; }
-.preferences-page .field-label, .preferences-page .text-input, .preferences-page .default-reminder, .preferences-page .reminder-option, .preferences-page .preferences-save { font-size: 38rpx; }
+.preferences-page .field-label, .preferences-page .text-input, .preferences-page .reminder-option, .preferences-page .preferences-save { font-size: 38rpx; }
+
+.fixed-reminder { display: flex; align-items: center; gap: 24rpx; min-height: 144rpx; border-bottom: 1rpx solid #e9dfd1; font-size: 34rpx; }
+.fixed-reminder image { width: 40rpx; height: 40rpx; }
+.fixed-reminder text:first-of-type { flex: 1; }
+.fixed-reminder text:last-child { color: var(--muted); font-size: 26rpx; }

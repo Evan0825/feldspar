@@ -32,7 +32,7 @@ Page({
     catch (error) {
       const userError = toUserError(error, '琥珀夜灯')
       this.setData({ brightnessDraft: this.data.light.brightness, actionError: userError })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     }
     finally { this.setData({ syncing: false }) }
   },
