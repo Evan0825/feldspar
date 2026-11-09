@@ -5,6 +5,8 @@
 const env = require('../../config/env')
 const { isValidSerialNumber, normalizeSerialNumber } = require('../../domain/device-identity')
 const { resolveLightColor } = require('../../utils/ble')
+const { isoDate, shiftDate } = require('../../domain/sleep-period')
+const { dateKey } = require('../../domain/ai-display')
 
 function wifiScanError(code, message) {
   const error = new Error(message || code)
@@ -261,15 +263,26 @@ function hasBleIo(id) {
 
 function withIoState(kind, preferences, io) {
   const actual = io[kind]
+  const mode = actual.mode ? (actual.enabled ? actual.mode : preferences.mode) : 'night-low'
+  const color = actual.enabled
+    ? (mode === 'night-low' && actual.r === actual.g && actual.g === actual.b ? 'white' : 'amber')
+    : preferences.color
   return { ...preferences, ...actual,
-    ...(kind === 'light' ? { mode: 'night-low', modeName: '低亮起夜',
-      brightness: Math.max(actual.r, actual.g, actual.b), rgb: { r: actual.r, g: actual.g, b: actual.b } }
-      : { timer: 'all-night' }),
+    ...(kind === 'light' ? { mode, color, modeName: mode === 'bedtime-breathe' ? '睡前呼吸灯' : '白光照明',
+      brightness: actual.enabled ? Math.max(actual.r, actual.g, actual.b) : preferences.brightness,
+      rgb: { r: actual.r, g: actual.g, b: actual.b } }
+      : { timer: actual.timerSupported ? (actual.playing || actual.paused ? actual.timer : preferences.timer) : 'all-night', ...(actual.timerSupported ? { timerCheckedAt: Date.now() } : {}) }),
     confirmed: true, source: 'ble-driver', physicalFeedback: false }
 }
 
+function hasFreshCloudOutput(runtime, kind) {
+  return runtime?.available === true && runtime.freshness === 'fresh' &&
+    runtime.capabilities?.[`cloud_${kind}_control`] === true && runtime[`${kind}_output`] != null
+}
+
 async function readControlState(id, kind, normalize) {
-  let preferences = storageGet(`haomian-control-${kind}:${id}`) || {}
+  const local = storageGet(`haomian-control-${kind}:${id}`) || {}
+  let preferences = local
   let cloudError = null
   try {
     const response = await request('GET', `/api/v1/device/${id}/${kind}`, undefined, { cacheTtl: 0 })
@@ -278,10 +291,22 @@ async function readControlState(id, kind, normalize) {
     if (!hasBleIo(id) || !isCloudUnavailable(error)) throw error
     cloudError = error.code
   }
+  const localPending = kind === 'light' && local.syncPending === true && hasBleIo(id)
+  if (localPending) {
+    preferences = { ...preferences, brightness: local.brightness, mode: local.mode, color: local.color }
+  }
   const state = normalize(preferences)
+  const runtime = await request('GET', `/api/v1/device/${id}/runtime/snapshot`, undefined, { cacheTtl: 1000 }).catch(() => null)
+  if (hasFreshCloudOutput(runtime, kind)) {
+    const output = runtime[`${kind}_output`]
+    const actual = kind === 'sound' ? { ...output, timerSupported: true,
+      timer: output.timer_minutes || 'all-night', timerRemainingSeconds: output.remaining_seconds } : output
+    return { ...withIoState(kind, state, { [kind]: actual }), source: 'cloud-driver',
+      ...(kind === 'sound' ? { timerCheckedAt: Date.now() - Math.max(0, Number(runtime.age_seconds) || 0) * 1000 } : {}) }
+  }
   if (!hasBleIo(id)) return { ...state, confirmed: false, source: 'cloud-preference' }
   const actual = withIoState(kind, state, await deviceBridge.getIoState(id))
-  return { ...actual, syncPending: Boolean(cloudError), syncError: cloudError }
+  return { ...actual, syncPending: Boolean(cloudError || localPending), syncError: cloudError || (localPending ? local.syncError : null) }
 }
 
 async function saveConfirmedControl(id, kind, desired, patch, result) {
@@ -294,7 +319,9 @@ async function saveConfirmedControl(id, kind, desired, patch, result) {
     return { ...actual, syncPending: false }
   } catch (error) {
     // A cloud save cannot undo a confirmed physical command. Do not resend it.
-    return { ...actual, syncPending: true, syncError: error.code || 'UNKNOWN' }
+    const pending = { ...actual, syncPending: true, syncError: error.code || 'UNKNOWN' }
+    if (kind === 'light' && actual.brightness > 40) storageSet(`haomian-control-${kind}:${id}`, pending)
+    return pending
   }
 }
 
@@ -565,8 +592,8 @@ function normalizeLight(input) {
     ...light,
     enabled: Boolean(light.enabled),
     mode: ['bedtime-breathe', 'night-low'].includes(light.mode) ? light.mode : 'bedtime-breathe',
-    modeName: light.modeName || (light.mode === 'night-low' ? '低亮起夜' : '睡前呼吸灯'),
-    brightness: Math.max(5, Math.min(40, numberOr(light.brightness, 15))),
+    modeName: light.mode === 'night-low' ? '白光照明' : '睡前呼吸灯',
+    brightness: Math.max(5, Math.min(100, numberOr(light.brightness, 15))),
     color: color.name,
     colorTemperatureKelvin: color.colorTemperatureKelvin,
     rgb: { r: color.r, g: color.g, b: color.b },
@@ -688,6 +715,11 @@ const auth = {
     // Send both forms while old cloud revisions are still in circulation.
     const r = await request('PUT', '/api/v1/user/me/profile', { ...desired, ...c2s(desired) })
     const saved = wrapProfile(r && (r.profile || r))
+    for (const key of ['excludeSoundReminder', 'excludeLightReminder']) {
+      if (profile && typeof profile[key] === 'boolean' && saved[key] !== profile[key]) {
+        throw toServiceError(Object.assign(new Error('READBACK_MISMATCH'), { code: 'READBACK_MISMATCH' }))
+      }
+    }
     storageSet('haomian-profile', saved)
     profileCacheAt = Date.now()
     const session = storageGet('haomian-session')
@@ -702,6 +734,8 @@ function defaultProfile(id) {
     id: id || '',
     nickname: '月',
     sleepMode: 'shared',
+    excludeSoundReminder: false,
+    excludeLightReminder: false,
     privacyAccepted: false,
     aiDataAuthorized: false,
     mqttAudioAuthorized: false,
@@ -714,6 +748,8 @@ function wrapProfile(r) {
     id: r.id || r.user_id || r.userId || '',
     nickname: r.nickname || r.name || '月',
     sleepMode: r.sleep_mode || r.sleepMode || 'shared',
+    excludeSoundReminder: r.excludeSoundReminder === true || r.exclude_sound_reminder === true || r.exclude_sound_reminder === 1,
+    excludeLightReminder: r.excludeLightReminder === true || r.exclude_light_reminder === true || r.exclude_light_reminder === 1,
     privacyAccepted: Boolean(r.privacy_accepted || r.privacyAccepted),
     aiDataAuthorized: Boolean(r.ai_data_authorized || r.aiDataAuthorized),
     mqttAudioAuthorized: Boolean(r.mqtt_audio_authorized || r.mqttAudioAuthorized || r.raw_audio_candidate_consent || r.rawAudioCandidateConsent),
@@ -731,7 +767,7 @@ const device = {
     return Array.isArray(found) ? found : []
   },
 
-  async autoConnect({ deviceId = '', serialNumber = '', timeout = 5000, refreshGatt = false } = {}) {
+  async autoConnect({ deviceId = '', serialNumber = '', timeout = 5000, refreshGatt = false, preferCloud = false } = {}) {
     const candidateSerial = normalizeSerialNumber(
       serialNumber || storageGet('haomian-device-serial') || '',
     )
@@ -741,6 +777,10 @@ const device = {
     const id = /^haomian_sleep_[0-9a-f]{6}$/.test(candidateId) ? candidateId : derivedId
     if (!getToken() || (!id && !serial)) {
       return { connected: false, skipped: true, reason: 'invalid-device-identity' }
+    }
+    if (preferCloud && !refreshGatt) {
+      const status = await this.getStatus().catch(() => null)
+      if (status?.cloudOnline && status.provisioned) return { connected: false, skipped: true, reason: 'cloud-online' }
     }
     if (!deviceBridge || typeof deviceBridge.autoConnect !== 'function') {
       return { connected: false, skipped: true }
@@ -799,6 +839,12 @@ const device = {
     storageSet('haomian-device-serial', source.serialNumber || '')
     try { wx.removeStorageSync('haomian-pending-device') } catch {}
     return { deviceId: id, bound: true, transport: 'ble-local' }
+  },
+
+  async getFirmwareVersion() {
+    return typeof deviceBridge?.getFirmwareVersion === 'function'
+      ? deviceBridge.getFirmwareVersion(getDeviceId())
+      : ''
   },
 
   async getWifiStatus({ refresh = false } = {}) {
@@ -917,6 +963,12 @@ const device = {
     const cloudOnline = dev.device_status === 'online'
     const provisioned = dev.mode ? dev.mode !== 'unprovisioned' : Boolean(ble.known && ble.connected)
     const bleControlAvailable = Boolean(ble.connected && provisioned && safety.available && !safety.stopLatched)
+    const cloudManualAvailable = Boolean(cloudOnline && provisioned && runtime.clock_valid === true &&
+      runtime.stop_latched === false && !(safety.available && safety.stopLatched))
+    const cloudLightAvailable = cloudManualAvailable && hasFreshCloudOutput(runtime, 'light')
+    const cloudSoundAvailable = cloudManualAvailable && hasFreshCloudOutput(runtime, 'sound')
+    const cloudVibrationTestAvailable = cloudManualAvailable && runtimeFresh &&
+      runtime.manual_active === false && runtime.capabilities?.cloud_vibration_test === true
     const online = cloudOnline || Boolean(ble.connected)
     const serialNumber = storageGet('haomian-device-serial') || dev.serial_number || dev.device_id || id
     const hasData = Boolean(dev.has_data)
@@ -925,7 +977,7 @@ const device = {
     const radarStatus = runtimeFresh ? (runtime.radar_status
       || (runtime.capabilities && runtime.capabilities.radar_driver === false ? 'not_installed' : 'unknown')) : 'unknown'
     const modelVersion = runtimeFresh && runtime.model_version ? runtime.model_version : '未核验'
-    const firmwareVersion = runtimeFresh && runtime.firmware_version ? runtime.firmware_version : '未核验'
+    const firmwareVersion = (runtimeFresh && runtime.firmware_version) || dev.firmware_version || '未核验'
     return {
       deviceId: id,
       bound: true,
@@ -943,6 +995,9 @@ const device = {
         Boolean(cloudOnline && runtimeFresh && provisioned && runtime.stop_latched === false &&
           runtime.capabilities && runtime.capabilities.actuation_guard === 1 && runtime.pad_status === 'connected')),
       controlTransport: bleControlAvailable ? 'ble' : (cloudOnline ? 'cloud' : 'none'),
+      cloudLightAvailable,
+      cloudSoundAvailable,
+      cloudVibrationTestAvailable,
       ble,
       mode: dev.mode || 'solo',
       serialNumber,
@@ -950,13 +1005,17 @@ const device = {
       modelVersion,
       host: {
         online,
-        firmwareUpdateAvailable: false,
-        modelUpdateAvailable: false,
+        firmwareUpdateAvailable: typeof dev.firmware_update_available === 'boolean' ? dev.firmware_update_available : null,
+        modelUpdateAvailable: typeof dev.model_update_available === 'boolean' ? dev.model_update_available : null,
         firmwareVersion,
         modelVersion,
         serialNumber,
       },
-      pad: { connected: runtimeFresh && runtime.pad_status === 'connected', status: runtimeFresh ? (runtime.pad_status || 'unknown') : 'unknown' },
+      pad: {
+        connected: runtimeFresh && runtime.pad_status === 'connected',
+        status: runtimeFresh ? (runtime.pad_status || 'unknown') : 'unknown',
+        manualConfirmationAvailable: runtimeFresh && runtime.pad_status === 'unknown' && runtime.capabilities?.pad_detection === false,
+      },
       microphones: { status: runtimeFresh ? (runtime.mic_status || 'unknown') : 'unknown', ready: runtimeFresh && runtime.mic_status === 'ready' },
       radar: {
         status: radarStatus,
@@ -1005,6 +1064,19 @@ const device = {
     return { active: false, stopLatched: true, confirmed: true, physicalFeedback: false, transport: 'mqtt' }
   },
 
+  async startVibrationTest() {
+    const id = getDeviceId()
+    if (!(await this.getStatus()).cloudVibrationTestAvailable)
+      throw serviceError('CONTROL_UNSUPPORTED', '月石暂未就绪，无法通过 Wi-Fi 试振')
+    const queued = await request('POST', `/api/v1/device/${id}/vibration-test`, {
+      request_id: `trial-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`,
+    })
+    const { readback } = await waitForDeviceControlCommand(id, queued)
+    if (readback?.vibrationTest?.started !== true || readback.vibrationTest.durationMs !== 2000)
+      throw serviceError('READBACK_MISMATCH', '月石尚未确认试振开始')
+    return readback.vibrationTest
+  },
+
   async runCalibration() {
     const id = getDeviceId()
     const [status, r] = await Promise.all([
@@ -1013,9 +1085,17 @@ const device = {
     ])
     const online = Boolean(status.bound && status.provisioned && status.host && status.host.online)
     const radarNotInstalled = Boolean(status.radar && status.radar.optional)
+    const envVersion = env.testManualPadConfirmation === true ? wx.getAccountInfoSync?.()?.miniProgram?.envVersion : undefined
+    const canConfirmPad = (envVersion === 'develop' || envVersion === 'trial')
+      && online && status.microphones.ready && status.pad.manualConfirmationAvailable
     const checks = [
       { id: 'placement', label: '主机放置', ready: online, detail: online ? '主机在线' : '请确认主机在线' },
-      { id: 'microphones', label: '双麦克风', ready: Boolean(status.microphones.ready), detail: '请移开遮挡' },
+      {
+        id: 'microphones',
+        label: '麦克风',
+        ready: Boolean(status.microphones.ready),
+        detail: status.microphones.status === 'unknown' ? '未收到麦克风状态' : '麦克风未就绪',
+      },
       {
         id: 'radar',
         label: '24G 毫米波雷达（可选）',
@@ -1023,11 +1103,18 @@ const device = {
         ready: radarNotInstalled || Boolean(status.radar.ready),
         detail: radarNotInstalled ? '当前 demo 未安装雷达，不影响基础流程。' : '雷达未就绪，不影响基础功能。',
       },
-      { id: 'pad', label: '枕下定向振动片', ready: Boolean(status.pad.connected), detail: '请确认有线连接' },
+      {
+        id: 'pad',
+        label: '枕下振动片',
+        ready: Boolean(status.pad.connected),
+        detail: canConfirmPad ? '观察振动片实际振动并停下后继续。'
+          : (status.pad.status === 'unknown' ? '未收到振动片连接状态' : '请确认有线连接'),
+      },
     ]
     const ready = checks.filter((item) => item.required !== false).every((item) => item.ready)
     return {
-      ready, checks,
+      ready, checks, deviceId: id, canConfirmPad,
+      canViewDevice: status.bound === true,
       serialNumber: status.host.serialNumber,
       calibrationToken: ready ? `cloud-config:${id}:${r.config_version || 0}` : '',
       guidance: ready ? '设备状态已就绪' : '请完成未通过的检查',
@@ -1040,7 +1127,9 @@ const device = {
     const r = await request('GET', `/api/v1/device/${id}/config`)
     return {
       ...normalizeSettings({ ...s2c(r.config || r), sleepMode: r.mode === 'partner' ? 'shared' : 'solo' }),
+      deviceId: id,
       configVersion: r.config_version,
+      personalStrategy: r.personal_strategy || r.personalStrategy || null,
       name: r.name,
       mode: r.mode,
     }
@@ -1100,13 +1189,16 @@ const device = {
     const id = getDeviceId()
     const current = await this.getSoundState()
     const desired = normalizeSound({ ...current, ...(patch || {}) })
-    if (hasBleIo(id)) {
+    if (current.source !== 'cloud-driver' && hasBleIo(id)) {
       const result = await deviceBridge.applySound(id, current, desired, patch || {})
       return saveConfirmedControl(id, 'sound', desired, patch || {}, result)
     }
+    if (!(await this.getStatus()).cloudSoundAvailable) throw serviceError('CONTROL_UNSUPPORTED', '月石暂未就绪，无法通过 Wi-Fi 播放声音')
     const queued = await request('POST', `/api/v1/device/${id}/sound-command`, { patch: patch || {} })
-    await waitForDeviceControlCommand(id, queued)
-    return this.getSoundState()
+    const { readback } = await waitForDeviceControlCommand(id, queued)
+    if (typeof readback?.sound?.playing !== 'boolean') throw serviceError('READBACK_MISMATCH', '设备尚未确认本次播放设置')
+    return { ...normalizeSound({ ...desired, ...readback.sound }), confirmed: true, source: 'cloud-driver',
+      timerSupported: true, timerCheckedAt: Date.now(), physicalFeedback: false }
   },
 
   async listSoundEffects() {
@@ -1156,13 +1248,20 @@ const device = {
     const current = await this.getLightState()
     const desired = normalizeLight({ ...current, ...(patch || {}), color: (patch && patch.color) || current.color })
     const controlPatch = { ...(patch || {}), color: desired.color }
-    if (hasBleIo(id)) {
+    if (current.source !== 'cloud-driver' && hasBleIo(id)) {
       const result = await deviceBridge.applyLight(id, desired, controlPatch)
-      return saveConfirmedControl(id, 'light', desired, controlPatch, result)
+      // The deployed preference API stores the mode and accepts amber only.
+      const preferencePatch = { ...controlPatch }
+      if (preferencePatch.color === 'white') delete preferencePatch.color
+      if (desired.brightness > 40) preferencePatch.brightness = desired.brightness
+      return saveConfirmedControl(id, 'light', desired, preferencePatch, result)
     }
+    if (!(await this.getStatus()).cloudLightAvailable) throw serviceError('CONTROL_UNSUPPORTED', '月石暂未就绪，无法通过 Wi-Fi 控制夜灯')
+    if (desired.color === 'white') throw serviceError('CONTROL_UNSUPPORTED', 'Wi-Fi 夜灯使用暖光')
     const queued = await request('POST', `/api/v1/device/${id}/light-command`, { patch: controlPatch })
-    await waitForDeviceControlCommand(id, queued)
-    return this.getLightState()
+    const { readback } = await waitForDeviceControlCommand(id, queued)
+    if (typeof readback?.light?.enabled !== 'boolean') throw serviceError('READBACK_MISMATCH', '设备尚未确认本次灯光设置')
+    return { ...normalizeLight({ ...desired, ...readback.light }), confirmed: true, source: 'cloud-driver', physicalFeedback: false }
   },
 
   async getDemoStates() {
@@ -1183,7 +1282,7 @@ const device = {
       const r = await request('POST', `/api/v1/device/${id}/apply-candidate`, {
         candidateId, expectedConfigVersion,
       })
-      return normalizeCommand(s2c(r.command || r))
+      return normalizeCommand({ ...s2c(r.command || r), deviceId: id })
     } catch (e) {
       throw toServiceError(e)
     }
@@ -1199,7 +1298,7 @@ const device = {
     const id = getDeviceId()
     try {
       const r = await request('GET', `/api/v1/device/${id}/settings-command/${commandId}`, undefined, { cacheTtl: 0 })
-      return normalizeCommand(s2c(r.command || r))
+      return normalizeCommand({ ...s2c(r.command || r), deviceId: id })
     } catch (e) {
       throw toServiceError(e)
     }
@@ -1209,7 +1308,7 @@ const device = {
     const id = getDeviceId()
     try {
       const r = await request('POST', `/api/v1/device/${id}/settings-command/${commandId}/reconcile`, {})
-      return normalizeCommand(s2c(r.command || r))
+      return normalizeCommand({ ...s2c(r.command || r), deviceId: id })
     } catch (e) {
       throw toServiceError(e)
     }
@@ -1220,15 +1319,79 @@ const device = {
 // Reports（晨报 / 周报 / 事件 / 反馈）
 // ═════════════════════════════════════===
 
+// The backend buckets a night by its start date. The calendar uses its morning date.
+function morningDate(nightId) {
+  const bucket = String(nightId || '').match(/^(\d{4})(\d{2})(\d{2})_/)
+  if (!bucket) return isoDate(nightId)
+  const start = isoDate(`${bucket[1]}-${bucket[2]}-${bucket[3]}`)
+  return start ? shiftDate(start, 1) : ''
+}
+
+function asClock(timestamp) {
+  const ms = typeof timestamp === 'number' ? timestamp * 1000 : Date.parse(timestamp)
+  return Number.isFinite(ms) ? new Date(ms + 8 * 3600000).toISOString().slice(11, 16) : ''
+}
+
 const reports = {
-  async getLatest({ nightId } = {}) {
+  async getLatest({ nightId, fresh = false } = {}) {
     const id = getDeviceId()
     // Report data must never wait for an external LLM. AI has a separate endpoint.
     const path = nightId
       ? `/api/v1/morning_report/${id}?night_id=${encodeURIComponent(nightId)}&generate_ai=false`
       : `/api/v1/morning_report/${id}?generate_ai=false`
-    const r = await request('GET', path, undefined, { retryColdStart: true, cacheTtl: 8000 })
+    const r = await request('GET', path, undefined, { retryColdStart: true, cacheTtl: fresh ? 0 : 8000 })
     return translateMorningReport(r)
+  },
+
+  async getByNightId(nightId) {
+    if (!nightId) return null
+    const date = /^night-\d{4}-\d{2}-\d{2}$/.test(nightId) && isoDate(nightId)
+    const backendId = date ? `${shiftDate(date, -1).replace(/-/g, '')}_${getDeviceId()}` : nightId
+    const report = await reports.getLatest({ nightId: backendId })
+    return report?.hasData && report.id === backendId ? report : null
+  },
+
+  async getPeriodTrend({ periodStart, periodEnd } = {}) {
+    const start = isoDate(periodStart)
+    const end = isoDate(periodEnd)
+    const elapsed = (Date.parse(end) - Date.parse(start)) / 86400000
+    if (!start || !end || elapsed < 0 || elapsed >= 31) throw serviceError('INVALID_DATE_RANGE', '请选择有效的日历范围')
+    const id = getDeviceId()
+    const limit = 90
+    const [trend, feedbackResult] = await Promise.all([
+      request('GET', `/api/v1/weekly/${id}?days=${limit}`, undefined, { retryColdStart: true, cacheTtl: 15000 }),
+      request('GET', `/api/v1/morning_feedback/${id}?limit=${limit}`, undefined, { cacheTtl: 10000 }).catch(() => null),
+    ])
+    const feedback = Array.isArray(feedbackResult) ? feedbackResult : (feedbackResult?.feedbacks || feedbackResult?.feedback || [])
+    const feedbackByNight = new Map(feedback.filter(item => typeof item.awakened === 'boolean' || typeof item.was_disturbed === 'boolean').map(item => [item.night_id, wrapFeedback(item)]))
+    const daily = Array.isArray(trend.daily) ? trend.daily : []
+    const rows = daily.map(item => ({
+      nightId: item.night_id,
+      dateISO: morningDate(item.night_id),
+      valid: item.event_count > 0,
+      effectiveMonitoringMinutes: observedNumber(item.effective_monitoring_minutes),
+      snoreEvents: observedNumber(item.snore_event_count),
+      interventions: observedNumber(item.total_rounds),
+      feedback: feedbackByNight.get(item.night_id) || null,
+    }))
+    const oldest = rows.map(row => row.dateISO).filter(Boolean).sort()[0]
+    const dates = []
+    if (daily.length >= limit && oldest) {
+      for (let date = start; date <= end && date < oldest; date = shiftDate(date, 1)) dates.push(date)
+    }
+    for (let offset = 0; offset < dates.length; offset += 5) {
+      const older = await Promise.all(dates.slice(offset, offset + 5).map(date => reports.getByNightId(`night-${date}`)))
+      for (const report of older.filter(Boolean)) rows.push({
+        nightId: report.id, dateISO: report.sourceDate, valid: true,
+        effectiveMonitoringMinutes: report.effectiveMonitoringMinutes,
+        snoreEvents: report.snoreCountUnconfirmed ? null : report.confirmedSnoreEventCount, interventions: report.interventionCount,
+        feedback: feedbackByNight.get(report.id) || null,
+      })
+    }
+    const range = rows.filter(row => row.dateISO >= start && row.dateISO <= end)
+    range.dataSource = trend.data_source
+    range.feedbackUnavailable = feedbackResult === null
+    return range
   },
 
   async getEvents({ nightId, type, limit = 100 } = {}) {
@@ -1247,6 +1410,14 @@ const reports = {
       out = out.filter(e => e.eventType === type)
     }
     return out
+  },
+
+  async getCollectionNights() {
+    const id = getDeviceId()
+    const result = await request('GET', `/api/v1/weekly/${id}?days=7`, undefined, { retryColdStart: true, cacheTtl: 15000 })
+    return (Array.isArray(result.daily) ? result.daily : []).map(item => ({
+      nightId: item.night_id, date: morningDate(item.night_id), valid: item.event_count > 0,
+    }))
   },
 
   async getSevenNightTrend({ days = 7 } = {}) {
@@ -1316,7 +1487,7 @@ function translateMorningReport(r) {
   // Candidate observations are real device-derived data, but not confirmed diagnoses.
   const snoreEventCount = confirmedSnoreCount + candidateObservationCount
 
-  const interventionCount = stats.total_count || 0
+  const interventionCount = observedNumber(stats.total_count)
   const successCount = stats.success_count || 0
   const successRate = observedNumber(stats.success_rate)
   const timestamps = timeline.map((event) => Number(event.timestamp)).filter(Number.isFinite)
@@ -1326,13 +1497,15 @@ function translateMorningReport(r) {
   const supineAssociationRate = hasData ? observedNumber(r.supine_association_rate) : null
   const snoreStopped = observedNumber(r.snore_stopped_responses)
   const turnOver = observedNumber(r.turn_over_responses)
-  const startTime = r.start_time || (timestamps.length ? new Date(Math.min(...timestamps) * 1000).toTimeString().slice(0, 5) : '')
-  const endTime = r.end_time || (timestamps.length ? new Date(Math.max(...timestamps) * 1000).toTimeString().slice(0, 5) : '')
+  const startTime = r.start_time || (timestamps.length ? asClock(Math.min(...timestamps)) : '')
+  const endTime = r.end_time || (timestamps.length ? asClock(Math.max(...timestamps)) : '')
+  const sourceDate = isoDate(r.source_date) || morningDate(r.night_id)
   return {
     // 前端要 id（mock 用法）
     id: r.night_id,
     nightId: r.night_id,
-    date: r.date || '',
+    date: sourceDate ? `${Number(sourceDate.slice(5, 7))} 月 ${Number(sourceDate.slice(8))} 日` : r.date || '',
+    sourceDate,
     hasData,
     eventCount,
     dataSource: r.data_source || (hasData ? 'device' : 'none'),
@@ -1340,11 +1513,14 @@ function translateMorningReport(r) {
     effectiveMonitoringMinutes,
     snoreEventCount,
     candidateObservationCount,
+    confirmedSnoreEventCount: confirmedSnoreCount,
+    snoreCountUnconfirmed: candidateObservationCount > 0 && confirmedSnoreCount === 0,
     soundObservationLabel: candidateObservationCount > 0 && confirmedSnoreCount === 0
       ? '声音候选'
       : '鼾声趋势',
     supineAssociationRate,
     supineSnoreTrend: !hasData ? '暂无有效数据' : (r.supine_snore_trend || '缺少体位关联评估'),
+    observationOnly: r.observation_only === true,
     interventionCount,
     snoreStoppedResponses: snoreStopped,
     turnOverResponses: turnOver,
@@ -1353,6 +1529,7 @@ function translateMorningReport(r) {
     dataQualityScore: observedNumber(r.data_quality_score),
     startTime,
     endTime,
+    eventSpanOnly: !r.start_time || !r.end_time,
     timelineMarks: r.timeline_marks || (timestamps.length > 1 && Math.max(...timestamps) > Math.min(...timestamps)
       ? timestamps.map(time => (time - Math.min(...timestamps)) * 100 / (Math.max(...timestamps) - Math.min(...timestamps))) : []),
     attentionLevel: r.attention_level || 'unknown',
@@ -1403,14 +1580,7 @@ function translateEvent(e) {
     'wake_up': 'wake-up',
   }
   const type = typeMap[e.event_type] || e.event_type || 'event'
-  // 时间戳 → HH:MM
-  let time = ''
-  if (e.timestamp) {
-    const d = new Date(typeof e.timestamp === 'number' ? e.timestamp * 1000 : e.timestamp)
-    time = d.toTimeString().slice(0, 5)
-  } else if (e.created_at) {
-    time = new Date(e.created_at * 1000).toTimeString().slice(0, 5)
-  }
+  const time = asClock(e.timestamp || e.created_at)
   // 标题/详情
   let title = ''
   let detail = ''
@@ -1422,11 +1592,10 @@ function translateEvent(e) {
       : `本地规则完成判断（置信度 ${(e.snore_confidence || 0).toFixed(2)}）`
   } else if (type === 'intervention') {
     title = '渐进振动提醒'
-    const dur = e.vibration_duration_ms ? Math.round(e.vibration_duration_ms / 1000) : 24
-    detail = `第 ${e.vibration_level || 1} 级，${dur} 秒后停止`
+    detail = [Number.isFinite(e.vibration_level) ? `第 ${e.vibration_level} 级` : '', Number.isFinite(e.vibration_duration_ms) ? `${Math.round(e.vibration_duration_ms / 1000)} 秒` : ''].filter(Boolean).join(' · ')
   } else if (type === 'response') {
-    title = e.event_type === 'verification_success' ? '提醒响应已确认' : '检测到翻身响应'
-    detail = `趋势回落，验证后停止（响应 ${e.response_time_sec || 0} 秒）`
+    title = e.event_type === 'verification_success' ? '提醒响应已确认' : e.event_type === 'position_change' ? '检测到体位变化' : '响应事件'
+    detail = Number.isFinite(e.response_time_sec) ? `响应 ${e.response_time_sec} 秒` : ''
   } else if (type === 'snore-stop') {
     title = '声音趋势回落'
     detail = '月石已暂停振动并进入响应验证'
@@ -1450,6 +1619,8 @@ function translateEvent(e) {
     id: e.id,
     deviceId: e.device_id,
     nightId: e.night_id,
+    triggerEventId: e.trigger_event_id,
+    interventionId: e.intervention_id,
     timestamp: e.timestamp,
     time,         // 前端 wxml 用 item.time
     type,         // 前端 wxml 用 item.type
@@ -1565,28 +1736,21 @@ function wrapFeedback(f) {
 function wrapInterpretation(ai, scope, nightId) {
   if (!ai) return null
   const isWeek = scope === 'seven-night'
+  const periodStart = ai.period_start || null
+  const periodEnd = ai.period_end || null
+  const sourceDate = isoDate(ai.source_date) || morningDate(nightId || ai.night_id) || isoDate(ai.date)
   const basis = Array.isArray(ai.basis) ? ai.basis : []
   // evidence 数组：basis.map 推 3 条结构化证据（前端 wxml 用 evidence[].metric/value/unit/window/explanation）
   const evidence = basis.map((text, i) => ({
     id: `ev-real-${i}`,
     metric: i === 0 ? '整体响应' : i === 1 ? '趋势' : '观察项',
-    value: text.length,
-    unit: '项',
-    window: isWeek ? '7 晚' : '昨夜',
+    value: '—',
+    unit: '',
+    window: isWeek ? (periodStart && periodEnd ? `${periodStart} — ${periodEnd}` : '周期未提供') : sourceDate || '日期未提供',
     sourceRefs: [`summary:${nightId || 'current'}`],
-    quality: 'good',
+    quality: ai.data_quality || 'unknown',
     explanation: text,
   }))
-  // periodStart/periodEnd：7 晚解读用最近 7 天推算，单晚用当天
-  let periodStart = ai.period_start
-  let periodEnd = ai.period_end
-  if (isWeek && !periodStart) {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(end.getDate() - 6)
-    periodStart = start.toISOString().slice(0, 10)
-    periodEnd = end.toISOString().slice(0, 10)
-  }
   return {
     interpretationId: ai.interpretation_id
       || (isWeek ? `week-${nightId || 'current'}-r1` : `night-${nightId || 'current'}-r1`),
@@ -1598,14 +1762,15 @@ function wrapInterpretation(ai, scope, nightId) {
     status: 'ready',
     hasData: ai.has_data !== false,
     eventCount: numberOr(ai.event_count, 0),
-    source: ai.source || 'llm',
-    sourceLabel: ai.source === 'llm' ? '云端 AI 解读' : '本地规则',
-    generatedAt: ai.generated_at || new Date().toISOString(),
-    periodLabel: isWeek ? '最近 7 晚' : (ai.date ? ai.date + ' 昨夜' : '昨夜'),
+    source: ai.source || 'unknown',
+    sourceLabel: ai.source === 'llm' ? '云端 AI 解读' : ['rule', 'rule-demo'].includes(ai.source) ? '本地规则' : '来源未标注',
+    generatedAt: ai.generated_at || '',
+    sourceDate: isWeek ? periodEnd || '' : sourceDate,
+    periodLabel: isWeek ? (periodStart && periodEnd ? `${periodStart} — ${periodEnd}` : '周期未提供') : sourceDate || '日期未提供',
     revision: ai.revision || 1,
     modelVersion: 'SnoozMate Insight 0.9',
     inputSnapshotVersion: 'night-summary-v1',
-    dataQuality: '良好',
+    dataQuality: ai.data_quality || '未评估',
     consentVersion: 'privacy-v1',
     conclusion: ai.summary || '',
     summary: ai.summary || '',
@@ -1619,6 +1784,26 @@ async function requireAiAuthorization() {
   if (!profile.aiDataAuthorized) throw serviceError('AI_CONSENT_REQUIRED', '请先允许 AI 使用结构化睡眠资料')
   return profile
 }
+
+function isChatForOwner(item, ownerId) {
+  return item && item.storageMode !== 'local-demo' && (!item.ownerId || item.ownerId === ownerId)
+}
+
+function storedChats() {
+  const stored = wx.getStorageSync('haomian-ai-chat-sessions')
+  return Array.isArray(stored) ? stored : []
+}
+
+function readChatSessions(ownerId) {
+  return ownerId ? storedChats().filter(item => isChatForOwner(item, ownerId)) : []
+}
+
+function storeChatSessions(ownerId, sessions) {
+  const others = storedChats().filter(item => !isChatForOwner(item, ownerId))
+  wx.setStorageSync('haomian-ai-chat-sessions', [...sessions, ...others])
+}
+
+const deletedChatSessions = new Set()
 
 const ai = {
   async getOverview(scope = 'single-night') {
@@ -1637,68 +1822,81 @@ const ai = {
     const inner = { ...((r && r.ai_interpretation) || {}), has_data: r && r.has_data, event_count: r && r.event_count }
     const single = wrapInterpretation(inner, 'single-night', r.night_id)
     const week = wrapInterpretation(inner, 'seven-night', r.night_id)
-    const all = [single, week].filter(Boolean)
+    const all = [single, week.periodStart && week.periodEnd ? week : null].filter(item => item?.hasData && item.conclusion)
     return kind ? all.filter(x => x.kind === kind) : all
   },
 
   async getChatSessions() {
-    try {
-      const stored = wx.getStorageSync('haomian-ai-chat-sessions') || []
-      return stored.map(s => ({
-        sessionId: s.sessionId || s.id,
-        title: s.title || '新对话',
-        preview: s.messages && s.messages.length ? (s.messages[s.messages.length - 1].text || '') : '',
-        updatedAt: s.updatedAt || s.updated_at || new Date().toISOString(),
-        messages: s.messages || [],
-        interpretationId: s.interpretationId,
-        interpretationRevision: s.interpretationRevision,
-        contextTitle: s.contextTitle,
-        contextConclusion: s.contextConclusion,
-        contextSummary: s.contextSummary,
-        conversationSummary: s.conversationSummary,
-        carriedMemory: s.carriedMemory,
-      }))
-    } catch { return [] }
+    const profile = await auth.getProfile()
+    return readChatSessions(profile.id).map(session => ({
+      ...session, sessionId: session.sessionId || session.id,
+      title: session.title || '新对话',
+      preview: session.messages?.[session.messages.length - 1]?.text || '',
+      dayKey: session.dayKey || dateKey(session.updatedAt || session.updated_at),
+      storageMode: 'local',
+    }))
   },
 
   async getChatSession(input) {
-    const sessionId = typeof input === 'string' ? input : input && input.sessionId
-    try {
-      const stored = wx.getStorageSync('haomian-ai-chat-sessions') || []
-      return stored.find(s => (s.sessionId || s.id) === sessionId) || null
-    } catch { return null }
+    const sessionId = typeof input === 'string' ? input : input?.sessionId
+    const profile = await auth.getProfile()
+    const session = readChatSessions(profile.id).find(item => (item.sessionId || item.id) === sessionId)
+    return session ? { ...session, sessionId, storageMode: 'local' } : null
   },
 
   async saveChatSession(session = {}) {
-    try {
-      const stored = wx.getStorageSync('haomian-ai-chat-sessions') || []
-      const sid = session.sessionId || session.id || `ai-chat-${Date.now()}`
-      const idx = stored.findIndex(s => (s.sessionId || s.id) === sid)
-      const next = { ...session, sessionId: sid, updatedAt: new Date().toISOString() }
-      if (idx >= 0) stored[idx] = next
-      else stored.unshift(next)
-      const trimmed = stored.slice(0, 30)
-      wx.setStorageSync('haomian-ai-chat-sessions', trimmed)
-      return next
-    } catch { return session }
+    const profile = await requireAiAuthorization()
+    if (!profile.id || (session.ownerId && session.ownerId !== profile.id)) throw serviceError('AUTH_EXPIRED')
+    const stored = readChatSessions(profile.id)
+    const sid = session.sessionId || session.id || `ai-chat-${Date.now()}`
+    if (deletedChatSessions.has(`${profile.id}:${sid}`)) throw serviceError('AI_CHAT_SESSION_DELETED')
+    const previous = stored.find(item => (item.sessionId || item.id) === sid)
+    const next = { ...session, sessionId: sid, ownerId: profile.id, storageMode: 'local', updatedAt: new Date().toISOString() }
+    if (previous?.contextDate) next.contextDate = previous.contextDate
+    storeChatSessions(profile.id, [next, ...stored.filter(item => (item.sessionId || item.id) !== sid)].slice(0, 30))
+    return next
   },
 
-  async getInterpretation(input = {}) {
+  async deleteChatSession(sessionId) {
+    const profile = await auth.getProfile()
+    if (!profile.id) throw serviceError('AUTH_EXPIRED')
+    const stored = readChatSessions(profile.id)
+    const remaining = stored.filter(item => (item.sessionId || item.id) !== sessionId)
+    if (remaining.length === stored.length) throw serviceError('AI_CHAT_SESSION_NOT_FOUND')
+    storeChatSessions(profile.id, remaining)
+    deletedChatSessions.add(`${profile.id}:${sessionId}`)
+    return { deleted: true, sessionId }
+  },
+
+  async getInterpretation(input = {}, revision, sourceDate) {
     await requireAiAuthorization()
     const source = typeof input === 'string' ? { interpretationId: input } : input
-    const { interpretationId, nightId } = source
+    const { interpretationId } = source
     const id = getDeviceId()
-    const r = await request('GET', `/api/v1/ai/interpretation/${id}`, undefined, { timeout: 35000 })
+    const fromId = /^(?:night|week)-(\d{8}_.+)-r\d+$/.exec(interpretationId || '')
+    const date = isoDate(sourceDate)
+    const nightId = source.nightId || fromId?.[1] || (date ? `${shiftDate(date, -1).replace(/-/g, '')}_${id}` : '')
+    const query = nightId ? '?night_id=' + encodeURIComponent(nightId) : ''
+    const r = await request('GET', `/api/v1/ai/interpretation/${id}${query}`, undefined, { timeout: 35000 })
     const inner = { ...((r && r.ai_interpretation) || {}), has_data: r && r.has_data, event_count: r && r.event_count }
     const scope = interpretationId && interpretationId.includes('week') ? 'seven-night' : 'single-night'
-    return wrapInterpretation(inner, scope, nightId || r.night_id)
+    const record = wrapInterpretation(inner, scope, r.night_id)
+    if ((nightId && r.night_id !== nightId) || (interpretationId && record.interpretationId !== interpretationId) ||
+      (revision && record.revision !== Number(revision))) throw serviceError('AI_INTERPRETATION_NOT_FOUND')
+    return record
   },
 
-  async ask({ message, question, interpretationId, recentMessages = [], conversationSummary = '' } = {}) {
+  async ask({ message, question, interpretationId, sourceDate, recentMessages = [], conversationSummary = '' } = {}) {
     await requireAiAuthorization()
     const text = (message || question || '').toString().trim()
     if (!text) throw new Error('AI_MESSAGE_REQUIRED')
     const id = getDeviceId()
+    if (sourceDate) {
+      const latest = await reports.getLatest({ fresh: true })
+      if (!latest?.hasData || latest.sourceDate !== sourceDate) {
+        throw serviceError('AI_HISTORICAL_CONTEXT_UNAVAILABLE', '历史对话可回看，当前云端只能解读最新一晚。')
+      }
+    }
     const r = await request('POST', '/api/v1/ai/chat', {
       device_id: id,
       message: text,
@@ -1709,6 +1907,12 @@ const ai = {
         .map((item) => ({ role: item.role, content: item.text || item.content })),
       conversation_summary: conversationSummary,
     }, { timeout: 35000 })
+    if (sourceDate) {
+      const returnedDate = r.context_used?.night_id
+        ? morningDate(r.context_used.night_id)
+        : (await reports.getLatest({ fresh: true }))?.sourceDate
+      if (returnedDate !== sourceDate) throw serviceError('AI_HISTORICAL_CONTEXT_UNAVAILABLE', '这次返回的记录日期与原对话不同。')
+    }
     const sections = r.sections && Object.values(r.sections).some(Boolean)
       ? r.sections
       : {
@@ -1771,10 +1975,26 @@ const ai = {
 // Guardian（实时守护 / 演示阶段）
 // ═════════════════════════════════════===
 
+function cloudAcousticStatus(result) {
+  const unknown = { validWindows: null }
+  if (!result) return { ...unknown, label: '分析暂不可读' }
+  if (!result.available) return { ...unknown, label: '等待设备数据' }
+  if (result.freshness !== 'fresh') return { ...unknown, label: '数据已延迟' }
+  const observation = result.observation
+  if (observation?.rule_version !== 'feature-rule-v1-unvalidated') return { ...unknown, label: '分析来源待确认' }
+  const count = observation.valid_windows
+  if (observation.quality !== 'good' || !Number.isInteger(count) || count < 0 || count > 30)
+    return { ...unknown, label: '信号质量待确认' }
+  return { validWindows: count, label: count === 30 ? '观察已更新' : '数据采集中' }
+}
+
 const guardian = {
   async getSnapshot() {
     const id = getDeviceId()
-    const runtime = await request('GET', `/api/v1/device/${id}/runtime/snapshot`, undefined, { cacheTtl: 500 })
+    const [runtime, features] = await Promise.all([
+      request('GET', `/api/v1/device/${id}/runtime/snapshot`, undefined, { cacheTtl: 500 }),
+      request('GET', `/api/v1/device/${id}/features/latest`, undefined, { cacheTtl: 0 }).catch(() => null),
+    ])
     const stateMap = {
       STANDBY: 'observing',
       MONITORING: 'observing',
@@ -1824,6 +2044,7 @@ const guardian = {
       reasonCodes: [runtime.available ? `LOCAL_${String(runtime.state || 'UNKNOWN')}` : 'RUNTIME_MISSING'],
       configVersion: runtime.config_version || 0,
       cloudRealtime: {
+        acoustic: cloudAcousticStatus(features),
         mqttConnected: Boolean(runtime.mqtt_connected || (runtime.mqtt && runtime.mqtt.connected)),
         audioEnabled: Boolean(runtime.mqtt_audio_enabled || (runtime.mqtt && runtime.mqtt.audio_enabled)),
         audioQueueDepth: numberOr(runtime.mqtt_audio_queue_depth || (runtime.mqtt && runtime.mqtt.audio_queue_depth), 0),

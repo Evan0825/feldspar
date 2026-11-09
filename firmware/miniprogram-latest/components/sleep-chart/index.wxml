@@ -1,0 +1,1 @@
+<canvas type="2d" id="plot" class="plot" style="height:{{kind === 'night' ? 304 : kind === 'week' ? 550 : 580}}rpx" bindtap="selectPoint" role="img" aria-label="{{kind === 'night' ? '整晚鼾声、提醒与响应时间轴，可点选提醒' : kind === 'week' ? '本周与上周同期鼾声频率，可点选日期' : '月内各周段鼾声频率，可点选周段'}}" />

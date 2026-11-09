@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-28",
+  "scope": "native mini-program UI and preferences; no production deploy or firmware output changes",
+  "checks": {
+    "demo_node_tests": {
+      "command": "npm run test:miniprogram",
+      "passed": 362,
+      "failed": 0
+    },
+    "integration_node_tests": {
+      "command": "python3 tests/run_checks.py (includes native C checks and Node tests)",
+      "passed": 31,
+      "failed": 0
+    },
+    "backend_tests": {
+      "command": "python -m unittest discover -s backend/tests -v",
+      "passed": 24,
+      "failed": 0
+    },
+    "demo_features": "passed",
+    "backend_smoke": "passed, in-process only",
+    "native_source_checks": "JS/JSON valid; demo 21 routes / 1590.8 KiB, integration 19 routes complete"
+  },
+  "ui_review": "passed after full WeChat recompilation and final four-screen plus focused comparisons",
+  "not_verified": [
+    "real mobile BLE, accessibility and hardware behavior",
+    "production cloud persistence after deployment"
+  ],
+  "ui_evidence": [
+    "01-home-approved.png",
+    "02-strategy-approved.png",
+    "03-profile-approved.png",
+    "04-preferences-approved.png",
+    "design-comparison-approved.png",
+    "comparison-focus-1.png",
+    "comparison-focus-3.png"
+  ]
+}

@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #define AG_ID_SIZE 65
-typedef enum { AG_MANUAL, AG_CLOUD, AG_LOCAL } ag_source_t;
+typedef enum { AG_MANUAL, AG_CLOUD, AG_LOCAL, AG_MANUAL_TEST } ag_source_t;
 typedef enum { AG_OK, AG_INVALID, AG_DISABLED, AG_UNSAFE, AG_EXPIRED,
                AG_BUSY, AG_DUPLICATE, AG_COOLDOWN, AG_BUDGET, AG_STORAGE,
                AG_STOPPED } ag_result_t;
@@ -34,7 +34,7 @@ typedef struct {
     bool active, stop_latched, budget_restored;
     uint8_t percent;
     ag_source_t source;
-    uint64_t deadline_ms, cooldown_until_ms;
+    uint64_t deadline_ms, cooldown_until_ms, manual_test_until_ms;
 } ag_guard_t;
 
 void ag_init(ag_guard_t *guard, ag_policy_t policy, ag_save_fn save, void *context);

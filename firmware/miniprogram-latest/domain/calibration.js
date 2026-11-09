@@ -8,7 +8,7 @@ function buildCalibration(status, guidance) {
   const padReady = Boolean(status.pad && status.pad.connected)
   const checks = [
     { id: 'placement', label: '主机放置', ready: placementReady, detail: placementReady ? '主机在线，正面朝向床中央' : '请确认主机已通电、在线并正面朝向床中央' },
-    { id: 'microphones', label: '双麦克风', ready: microphonesReady, detail: microphonesReady ? '本地声音趋势感知可用' : '请移开遮挡并检查主机位置' },
+    { id: 'microphones', label: '麦克风', ready: microphonesReady, detail: microphonesReady ? '本地声音趋势感知可用' : '请移开遮挡并检查主机位置' },
     {
       id: 'radar',
       label: '24G 毫米波雷达（可选）',

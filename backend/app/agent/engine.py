@@ -5,7 +5,6 @@ SnoozMate Agent 决策引擎 —— 产品灵魂
 不是"检测到就动"的自动化，而是有判断力的 Agent。
 """
 import time
-import json
 import uuid
 from typing import Dict, Optional, List
 from dataclasses import asdict, dataclass, field

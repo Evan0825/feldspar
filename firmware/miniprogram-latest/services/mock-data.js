@@ -2,6 +2,8 @@ const profile = {
   id: 'demo-user',
   nickname: '月石用户',
   sleepMode: 'shared',
+  excludeSoundReminder: false,
+  excludeLightReminder: false,
   privacyAccepted: false,
   aiDataAuthorized: false, mqttAudioAuthorized: false,
 }
@@ -57,16 +59,17 @@ const soundState = {
 const lightState = {
   enabled: true,
   mode: 'night-low',
-  modeName: '低亮',
+  modeName: '白光照明',
   brightness: 25,
-  color: 'amber',
-  colorTemperatureKelvin: 2200,
-  rgb: { r: 255, g: 132, b: 34 },
+  color: 'white',
+  colorTemperatureKelvin: null,
+  rgb: { r: 255, g: 255, b: 255 },
 }
 
 const latestReport = {
   id: 'night-2026-08-31',
-  date: '9 月 1 日 周二',
+  date: '8 月 31 日 周一',
+  sourceDate: '2026-08-31',
   effectiveMonitoringMinutes: 432,
   snoreEventCount: 12,
   supineAssociationRate: 67,
@@ -87,8 +90,8 @@ const latestReport = {
 const events = [
   { id: 'e1', time: '00:18', type: 'sleep-protection', title: '入睡保护结束', detail: '设备开始本地趋势观察' },
   { id: 'e2', time: '01:42', type: 'snore', title: '仰卧鼾声趋势上升', detail: '本地规则完成判断' },
-  { id: 'e3', time: '01:44', type: 'intervention', title: '渐进振动提醒', detail: '第 2 级，24 秒后停止' },
-  { id: 'e4', time: '01:45', type: 'response', title: '检测到翻身响应', detail: '趋势回落，验证后停止' },
+  { id: 'e3', triggerEventId: 'e2', time: '01:44', type: 'intervention', title: '渐进振动提醒', detail: '第 2 级，24 秒后停止' },
+  { id: 'e4', interventionId: 'e3', time: '01:45', type: 'response', title: '检测到翻身响应', detail: '趋势回落，验证后停止' },
   { id: 'e5', time: '04:26', type: 'intervention', title: '渐进振动提醒', detail: '第 3 级，停鼾响应' },
 ]
 

@@ -1,5 +1,6 @@
 #include "audio.h"
 
+#include <stdatomic.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -27,6 +28,8 @@ static TaskHandle_t s_play_task = NULL;
 static audio_state_t s_state = AUDIO_STATE_STOPPED;
 static bool s_i2s_enabled = false;
 static uint8_t s_volume = 100;
+static _Atomic TickType_t s_last_tx_tick;
+static TickType_t s_dma_tail_ticks;
 
 /* 预放大（pre-gain）：针对源文件响度偏低 / 功放默认增益偏小，对输出整体提升。
  * 100 = 1.0x，150 = 1.5x，200 = 2.0x。与音量 0-100 分层独立，最终相乘后削顶。 */
@@ -80,6 +83,7 @@ static void play_task(void *arg)
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "i2s write err: %d", err);
         }
+        if (bytes_written) atomic_store(&s_last_tx_tick, xTaskGetTickCount());
         vRingbufferReturnItem(ring, item);
     } while (1);
 }
@@ -92,6 +96,9 @@ esp_err_t audio_init(void)
 
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     chan_cfg.auto_clear = true;
+    uint32_t dma_frames = chan_cfg.dma_desc_num * chan_cfg.dma_frame_num;
+    uint32_t dma_ms = (dma_frames * 1000 + AUDIO_SAMPLE_RATE - 1) / AUDIO_SAMPLE_RATE;
+    s_dma_tail_ticks = pdMS_TO_TICKS(dma_ms) + 1;
     esp_err_t err = i2s_new_channel(&chan_cfg, &tx_chan, NULL);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "i2s_new_channel err: %d", err);
@@ -204,6 +211,16 @@ esp_err_t audio_feed(const uint8_t *pcm, size_t len)
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;
+}
+
+bool audio_has_pending(void)
+{
+    if (!ring) return false;
+    /* Byte-buffer space is reclaimed only after the I2S write returns. */
+    if (xRingbufferGetCurFreeSize(ring) < AUDIO_RING_SIZE) return true;
+    /* A completed write means DMA has the bytes, not that it sent them. */
+    TickType_t last_tx = atomic_load(&s_last_tx_tick);
+    return (TickType_t)(xTaskGetTickCount() - last_tx) < s_dma_tail_ticks;
 }
 
 esp_err_t audio_set_volume(uint8_t volume)

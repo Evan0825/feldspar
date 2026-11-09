@@ -70,7 +70,7 @@ const errorDefinitions = {
   },
   CLOUD_NOT_CONFIGURED: {
     title: '微信云调用尚未配置',
-    detail: '请确认小程序已初始化正确的云环境，并配置  服务名。',
+    detail: '请确认小程序已初始化正确的云环境，并配置 snoozmate-api 服务名。',
     retryable: false,
     action: 'retry',
   },
@@ -106,13 +106,13 @@ const errorDefinitions = {
   },
   NOT_FOUND: {
     title: '附近未找到设备',
-    detail: '请靠近好眠主机，并重新完成蓝牙搜索。',
+    detail: '请靠近月石主机，并重新完成蓝牙搜索。',
     retryable: true,
     action: 'setup',
   },
   CONNECTION_LOST: {
     title: '蓝牙连接已断开',
-    detail: '请靠近好眠主机后重试。',
+    detail: '请靠近月石主机后重试。',
     retryable: true,
     action: 'retry',
   },

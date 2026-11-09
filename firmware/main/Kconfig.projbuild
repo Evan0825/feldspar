@@ -1,0 +1,17 @@
+menu "Feldspar hardware"
+
+config FELDSPAR_BUTTON_ACTIVE_HIGH
+    bool "Use an active-high GPIO7 button module"
+    default n
+    help
+        Enable only for a board whose button drives GPIO7 high when pressed.
+        The default uses an active-low button with an internal pull-up.
+
+config FELDSPAR_PRESERVE_EXISTING_STORAGE
+    bool "Preserve provisioned storage at startup"
+    default n
+    help
+        For upgrades on an existing sample. Avoid erasing NVS, formatting
+        external storage on a mount error, or writing the flash test sector.
+
+endmenu

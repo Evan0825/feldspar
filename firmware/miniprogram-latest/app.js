@@ -4,7 +4,7 @@ const { createWxBleBridge } = require('./services/real/ble-bridge')
 
 App({
   globalData: {
-    brand: '好眠 SnoozMate',
+    brand: '月石',
     services,
   },
 
@@ -30,7 +30,7 @@ App({
   onShow() {
     if (services.serviceMode !== 'real' || !services.device || !services.device.autoConnect) return
     this.globalData.bleAutoConnect = 'connecting'
-    services.device.autoConnect({ timeout: 4000 })
+    services.device.autoConnect({ timeout: 4000, preferCloud: true })
       .then((result) => {
         this.globalData.bleAutoConnect = result.connected ? 'connected' : 'idle'
         this.globalData.bleAutoConnectError = ''

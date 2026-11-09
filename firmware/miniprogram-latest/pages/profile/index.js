@@ -60,11 +60,12 @@ Page({
     } catch (error) {
       const userError = toUserError(error, '演示状态')
       this.setData({ actionError: userError })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally {
       this.setData({ syncing: false })
     }
   },
+  openPreferences() { wx.navigateTo({ url: '/pages/onboarding/index?edit=1' }) },
   openDevice() { wx.navigateTo({ url: '/pages/device/index' }) },
   toggleSection(event) {
     const section = event.currentTarget.dataset.section
@@ -84,7 +85,7 @@ Page({
           : '关闭后 AI 将停止读取新的睡眠资料；已生成的结构化报告仍会保留。',
         confirmText: enabled ? '允许' : '确认关闭',
         cancelText: '取消',
-        confirmColor: enabled ? '#C97810' : '#A45237',
+        confirmColor: enabled ? '#654617' : '#A13F31',
         success: resolve,
         fail: reject,
       }))
@@ -100,7 +101,7 @@ Page({
     } catch (error) {
       const userError = toUserError(error, 'AI 数据授权')
       this.setData({ actionError: userError, profile: { ...this.data.profile } })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally {
       this.setData({ authorizing: false })
     }
@@ -118,7 +119,7 @@ Page({
           : '关闭后停止新的 MQTT 音频上传，月石本地规则守护仍继续运行。',
         confirmText: enabled ? '允许' : '确认关闭',
         cancelText: '取消',
-        confirmColor: enabled ? '#C97810' : '#A45237',
+        confirmColor: enabled ? '#654617' : '#A13F31',
         success: resolve,
         fail: reject,
       }))
@@ -133,7 +134,7 @@ Page({
     } catch (error) {
       const userError = toUserError(error, '云端实时声音授权')
       this.setData({ actionError: userError, profile: { ...this.data.profile } })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally {
       this.setData({ authorizing: false })
     }
@@ -144,7 +145,7 @@ Page({
     this._retryAction = () => this.unbind()
     this.setData({ syncing: true, actionError: null })
     try {
-      const result = await new Promise((resolve, reject) => wx.showModal({ title: '解绑设备', content: '解绑不会删除已归属到当前用户的历史报告。重新绑定后可继续查看。', confirmText: '确认解绑', confirmColor: '#A45237', success: resolve, fail: reject }))
+      const result = await new Promise((resolve, reject) => wx.showModal({ title: '解绑设备', content: '解绑不会删除已归属到当前用户的历史报告。重新绑定后可继续查看。', confirmText: '确认解绑', confirmColor: '#A13F31', success: resolve, fail: reject }))
       if (!result.confirm) {
         this._retryAction = null
         return
@@ -158,7 +159,7 @@ Page({
     } catch (error) {
       const userError = toUserError(error, '解绑设备')
       this.setData({ actionError: userError })
-      wx.showToast({ title: userError.title, icon: 'none' })
+
     } finally {
       this.setData({ syncing: false })
     }

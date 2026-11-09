@@ -5,6 +5,8 @@ const { isValidSerialNumber } = require('../../domain/device-identity')
 Page({
   data: {
     status: null,
+    wifiStatus: null,
+    localFirmwareVersion: '',
     loading: true,
     error: null,
     phase: 'loading',
@@ -12,18 +14,35 @@ Page({
     reconnectError: '',
     safetyBusy: false,
     safetyError: '',
+    vibrationTesting: false,
+    vibrationMessage: '',
   },
   onShow() { this.load() },
+  onUnload() { this._loadId = (this._loadId || 0) + 1 },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()) },
   async load() {
-    this.setData({ loading: true, error: null, phase: 'loading' })
+    const loadId = this._loadId = (this._loadId || 0) + 1
+    this.setData({ loading: true, error: null, phase: 'loading', wifiStatus: null, localFirmwareVersion: '' })
+    let status
     try {
-      const status = await services.device.getStatus()
-      this.setData({ status, phase: status ? 'data' : 'empty' })
+      status = await services.device.getStatus()
     } catch (error) {
-      this.setData({ status: null, error: toUserError(error, '设备状态'), phase: 'error' })
-    } finally {
-      this.setData({ loading: false })
+      if (loadId === this._loadId) this.setData({
+        status: null, error: toUserError(error, '设备状态'), phase: 'error', loading: false,
+      })
+      return
+    }
+    if (loadId !== this._loadId) return
+    this.setData({ status, phase: status ? 'data' : 'empty', loading: false })
+    if (!status?.ble?.connected) return
+    if (typeof services.device.getWifiStatus === 'function') {
+      const wifi = await services.device.getWifiStatus().catch(() => null)
+      if (loadId !== this._loadId) return
+      if (wifi?.supported === true) this.setData({ wifiStatus: wifi })
+    }
+    if (typeof services.device.getFirmwareVersion === 'function') {
+      const version = await services.device.getFirmwareVersion().catch(() => '')
+      if (loadId === this._loadId && version) this.setData({ localFirmwareVersion: version })
     }
   },
   retry() { return this.load() },
@@ -76,8 +95,33 @@ Page({
       : ''
     wx.navigateTo({ url: `/pages/setup/index?forceWifi=1${deviceQuery}${suffix}` })
   },
+  async startVibrationTest() {
+    if (this.data.vibrationTesting || !this.data.status?.cloudVibrationTestAvailable) return
+    this.setData({ vibrationTesting: true, vibrationMessage: '等待设备确认' })
+    try {
+      await services.device.startVibrationTest()
+      this.setData({ vibrationMessage: '设备已开始试振，约 2 秒' })
+    } catch (error) {
+      this.setData({ vibrationMessage: toUserError(error, '试振').title })
+    } finally {
+      this.setData({ vibrationTesting: false })
+    }
+  },
+  openCalibration() {
+    if (this.data.status?.bound) wx.navigateTo({ url: '/pages/calibration/index' })
+  },
   handleServiceAction(event) { return runServiceErrorAction(event.detail.action, () => this.retry(), wx) },
+  showSafetyHelp() {
+    wx.showModal({ title: '实体按键', content: '短按切换灯光，长按 2 秒停止全部输出。停止后，通过蓝牙恢复手动控制。', showCancel: false, confirmColor: '#654617' })
+  },
   showUpdateInfo(event) {
-    wx.showModal({ title: event.currentTarget.dataset.kind === 'model' ? '检测算法更新' : '固件更新', content: '当前为接口占位状态。正式版本需由硬件 OTA 与云端发布服务提供更新包和签名。', showCancel: false, confirmColor: '#B97728' })
+    const host = this.data.status?.host
+    if (!host) return
+    const isModel = event.currentTarget.dataset.kind === 'model'
+    const title = isModel ? '本地模型' : '固件版本'
+    const version = (isModel ? host.modelVersion : this.data.localFirmwareVersion || host.firmwareVersion) || '未核验'
+    const available = isModel ? host.modelUpdateAvailable : host.firmwareUpdateAvailable
+    const update = available === true ? '有待更新版本。' : available === false ? '暂无更新。' : '更新状态未核验。'
+    wx.showModal({ title, content: version + '\n' + update, showCancel: false, confirmColor: '#654617' })
   },
 })

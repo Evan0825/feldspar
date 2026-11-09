@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "睡眠数据",
+  "usingComponents": {
+    "state-banner": "/components/state-banner/index",
+    "sleep-chart": "/components/sleep-chart/index"
+  }
+}

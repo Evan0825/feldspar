@@ -1,82 +1,36 @@
 const services = require('../../services/index')
 const { toUserError } = require('../../domain/service-error')
-const { getTimeGreeting } = require('../../domain/time-greeting')
+const { dateKey } = require('../../domain/ai-display')
 const { buildDirectShare, buildTimelineShare } = require('../../domain/share-card')
-
-const ACTIVE_COMMAND_STATUSES = ['pending', 'validating', 'sending', 'ack-accepted', 'readback-pending']
+const { navigate, resetNavigation, openSleepSource } = require('../../domain/ai-navigation')
 
 Page({
-  data: {
-    greeting: getTimeGreeting(),
-    heroTitle: 'AI 解读由你授权',
-    scope: 'single-night',
-    mode: 'overview',
-    overview: null,
-    records: [],
-    filteredRecords: [],
-    recordFilter: 'all',
-    activeCommand: null,
-    heroTitle: 'AI 解读由你授权',
-    appliedSettings: null,
-    evidenceOpen: false,
-    expandedEvidenceId: '',
-    planOpen: false,
-    candidate: null,
-    candidateLoading: false,
-    candidateError: null,
-    applyingPlan: false,
-    loading: true,
-    refreshing: false,
-    refreshingScope: false,
-    consentRequired: false,
-    authorizing: false,
-    error: null,
-  },
-
-  onShow() {
-    this.setData({ greeting: getTimeGreeting() })
-    this.load()
-  },
-  onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()) },
+  data: { daily: null, loading: true, refreshing: false, consentRequired: false, authorizing: false, error: null, question: '' },
+  onShow() { resetNavigation(this); return this.load() },
+  onHide() { this._requestId = (this._requestId || 0) + 1 },
+  onUnload() { this.onHide() },
+  onPullDownRefresh() { return this.load().finally(() => wx.stopPullDownRefresh()) },
 
   async load() {
     const requestId = (this._requestId || 0) + 1
     this._requestId = requestId
-    const preserveContent = Boolean(this.data.consentRequired || this.data.overview || this.data.records.length)
+    const preserveContent = Boolean(this.data.daily || this.data.consentRequired)
     this.setData({ loading: !preserveContent, refreshing: preserveContent, error: null })
     try {
       const profile = await services.auth.getProfile()
       if (requestId !== this._requestId) return
       if (!profile || !profile.aiDataAuthorized) {
-        this.setData({
-          consentRequired: true,
-          overview: null,
-          records: [],
-          filteredRecords: [],
-          activeCommand: null,
-          loading: false,
-          refreshing: false,
-        })
+        this._ownerId = ''
+        this.setData({ consentRequired: true, daily: null, question: '' })
         return
       }
-      const [overview, records, activeCommand] = await Promise.all([
-        services.ai.getOverview(this.data.scope),
-        services.ai.getRecords(),
-        services.device.getActiveSettingsCommand ? services.device.getActiveSettingsCommand() : Promise.resolve(null),
-      ])
+      if (this._ownerId && this._ownerId !== profile.id) this.setData({ daily: null, question: '', loading: true })
+      this._ownerId = profile.id
+      const daily = await services.ai.getDailyHome()
       if (requestId !== this._requestId) return
-      this.setData({
-        consentRequired: false,
-        overview,
-        records,
-        filteredRecords: filterRecords(records, this.data.recordFilter),
-        activeCommand,
-        appliedSettings: commandAppliedSettings(activeCommand),
-        heroTitle: heroForOverview(overview),
-      })
-      if (overview.kind === 'single-night' && overview.hasData) this.ensureCandidate(overview)
+      this.setData({ daily, consentRequired: false })
     } catch (error) {
-      if (requestId === this._requestId) this.setData({ error: toUserError(error, 'AI 解读') })
+      if (requestId === this._requestId) this.setData({ error: toUserError(error, 'AI') })
     } finally {
       if (requestId === this._requestId) this.setData({ loading: false, refreshing: false })
     }
@@ -86,229 +40,54 @@ Page({
     if (this.data.authorizing) return
     this.setData({ authorizing: true, error: null })
     try {
-      const answer = await new Promise((resolve, reject) => wx.showModal({
+      const result = await new Promise((resolve, reject) => wx.showModal({
         title: '允许 AI 读取睡眠资料？',
-        content: '仅使用结构化事件、夜间摘要、连续趋势和你主动填写的反馈；不读取整夜原始录音。',
-        confirmText: '允许',
-        cancelText: '暂不',
-        confirmColor: '#C97810',
-        success: resolve,
-        fail: reject,
+        content: '仅使用结构化夜间记录、趋势和主动反馈，默认不读取整夜原始录音。你可随时在“我的”关闭授权。',
+        confirmText: '允许', cancelText: '暂不', confirmColor: '#654617', success: resolve, fail: reject,
       }))
-      if (!answer.confirm) return
+      if (!result.confirm) return
       await services.auth.saveProfile({ aiDataAuthorized: true, aiConsentVersion: 'ai-data-v1' })
-      this.setData({ consentRequired: false })
       await this.load()
     } catch (error) {
       this.setData({ error: toUserError(error, 'AI 数据授权') })
-    } finally {
-      this.setData({ authorizing: false })
-    }
+    } finally { this.setData({ authorizing: false }) }
   },
 
-  async setScope(event) {
-    const scope = event.currentTarget.dataset.scope
-    if (this.data.consentRequired || !['single-night', 'seven-night'].includes(scope) || scope === this.data.scope) return
-    const previousScope = this.data.scope
-    const requestId = (this._scopeRequestId || 0) + 1
-    this._scopeRequestId = requestId
-    this.setData({
-      scope,
-      mode: 'overview',
-      refreshingScope: true,
-      evidenceOpen: false,
-      expandedEvidenceId: '',
-      planOpen: false,
-      candidate: null,
-      candidateError: null,
-      error: null,
-    })
-    try {
-      const overview = await services.ai.getOverview(scope)
-      if (requestId === this._scopeRequestId) this.setData({ overview, heroTitle: heroForOverview(overview) })
-    } catch (error) {
-      if (requestId === this._scopeRequestId) this.setData({ scope: previousScope, error: toUserError(error, 'AI 解读') })
-    } finally {
-      if (requestId === this._scopeRequestId) this.setData({ refreshingScope: false })
-    }
-  },
-
-  setMode(event) {
-    const mode = event.currentTarget.dataset.mode
-    if (!['overview', 'records'].includes(mode)) return
-    this.setData({ mode, greeting: getTimeGreeting() })
-    if (typeof wx.setNavigationBarTitle === 'function') {
-      wx.setNavigationBarTitle({ title: mode === 'records' ? '解读记录' : '好眠 AI' })
-    }
-  },
-
-  setRecordFilter(event) {
-    const recordFilter = event.currentTarget.dataset.filter
-    if (!['all', 'single-night'].includes(recordFilter)) return
-    this.setData({ recordFilter, filteredRecords: filterRecords(this.data.records, recordFilter) })
-  },
-
-  openDetail(event) {
-    const interpretationId = event.currentTarget.dataset.id || (this.data.overview && this.data.overview.interpretationId)
-    if (!interpretationId) return
-    const record = this.data.records.find((item) => item.interpretationId === interpretationId)
-    const revision = event.currentTarget.dataset.revision || (record && record.revision) || 1
-    wx.navigateTo({ url: `/pages/ai-chat/index?interpretationId=${interpretationId}&revision=${revision}` })
-  },
-
-  toggleEvidence(event) {
-    const id = event.currentTarget.dataset.id
-    this.setData({ expandedEvidenceId: this.data.expandedEvidenceId === id ? '' : id })
-  },
-
-  toggleEvidenceList() {
-    const evidenceOpen = !this.data.evidenceOpen
-    const firstEvidence = this.data.overview && this.data.overview.evidence && this.data.overview.evidence[0]
-    this.setData({
-      evidenceOpen,
-      expandedEvidenceId: evidenceOpen && firstEvidence ? firstEvidence.id : '',
-    })
-  },
-
-  async toggleInlinePlan() {
-    const item = this.data.overview
-    if (!item || item.kind !== 'single-night') return
-    if (this.data.planOpen) {
-      this.setData({ planOpen: false })
-      return
-    }
-    this.setData({ planOpen: true })
-    if (this.data.activeCommand && ACTIVE_COMMAND_STATUSES.includes(this.data.activeCommand.status)) {
-      this.scheduleInlinePoll()
-    }
-    return this.ensureCandidate(item)
-  },
-
-  async ensureCandidate(item) {
-    if (!item || this.data.candidate || this.data.candidateLoading) return
-    this.setData({ candidateLoading: true, candidateError: null })
-    try {
-      const candidate = await services.ai.getTonightCandidate(item.interpretationId)
-      if (this.data.overview && this.data.overview.interpretationId === item.interpretationId) {
-        this.setData({ candidate })
-      }
-    } catch (error) {
-      this.setData({ candidateError: toUserError(error, '今晚温和方案') })
-    } finally {
-      this.setData({ candidateLoading: false })
-    }
-  },
-
-  async applyInlinePlan() {
-    if (this.data.applyingPlan) return
-    if (!this.data.candidate) await this.ensureCandidate(this.data.overview)
-    if (!this.data.candidate) return
-    const confirmed = await confirmInlinePlan()
-    if (!confirmed) return
-    this.setData({ applyingPlan: true, candidateError: null })
-    try {
-      this._commandPollAttempts = 0
-      const command = await services.device.applyTonightCandidate({
-        candidateId: this.data.candidate.candidateId,
-        expectedConfigVersion: this.data.candidate.currentConfigVersion,
+  onQuestionInput(event) { this.setData({ question: event.detail.value }) },
+  sendQuestion() { const question = this.data.question.trim(); if (question) this.openChatWithQuestion(question) },
+  askQuestion(event) { this.openChatWithQuestion(event.currentTarget.dataset.question || '') },
+  askWhy() { this.openChatWithQuestion('为什么这样判断？') },
+  openChat() { this.openChatWithQuestion('') },
+  openChatWithQuestion(question) {
+    const daily = this.data.daily
+    if (this.data.consentRequired || !daily || this._routePending) return
+    const today = dateKey(new Date())
+    if (daily.dayKey !== today) {
+      if (this.data.refreshing) return
+      return this.load().then(() => {
+        if (this.data.daily && this.data.daily.dayKey === today && !this.data.error) this.openChatWithQuestion(question)
       })
-      this.applyInlineCommandState(command)
-      this.scheduleInlinePoll()
-    } catch (error) {
-      this.setData({ candidateError: toUserError(error, '应用今晚设置') })
-    } finally {
-      this.setData({ applyingPlan: false })
     }
-  },
-
-  async pollInlineCommand() {
-    const command = this.data.activeCommand
-    if (!command || !ACTIVE_COMMAND_STATUSES.includes(command.status)) return
-    try {
-      const nextCommand = await services.device.getSettingsCommand(command.commandId)
-      this.applyInlineCommandState(nextCommand)
-      this.scheduleInlinePoll()
-    } catch (error) {
-      this.setData({ candidateError: toUserError(error, '设置回读') })
+    const params = []
+    if (daily.activeSessionId) params.push('sessionId=' + encodeURIComponent(daily.activeSessionId))
+    else if (daily.overview) {
+      params.push('interpretationId=' + encodeURIComponent(daily.overview.interpretationId))
+      params.push('revision=' + encodeURIComponent(daily.overview.revision || 1))
     }
+    params.push('dayKey=' + encodeURIComponent(daily.dayKey), 'sourceDate=' + encodeURIComponent(daily.sourceDate || ''))
+    params.push(question ? 'question=' + encodeURIComponent(question) : 'focus=1')
+    return navigate(this, wx, 'navigateTo', {
+      url: '/pages/ai-chat/index?' + params.join('&'),
+      success: () => { if (question === this.data.question.trim()) this.setData({ question: '' }) },
+    })
   },
-
-  async reconcileInlineCommand() {
-    if (!this.data.activeCommand) return
-    try {
-      this._commandPollAttempts = 0
-      this.applyInlineCommandState(await services.device.reconcileSettingsCommand(this.data.activeCommand.commandId))
-      this.scheduleInlinePoll()
-    } catch (error) {
-      this.setData({ candidateError: toUserError(error, '设置核对') })
-    }
-  },
-
-  applyInlineCommandState(activeCommand) {
-    this.setData({ activeCommand, appliedSettings: commandAppliedSettings(activeCommand) })
-  },
-
-  scheduleInlinePoll() {
-    if (this._commandPollTimer) clearTimeout(this._commandPollTimer)
-    if (this.data.activeCommand && ACTIVE_COMMAND_STATUSES.includes(this.data.activeCommand.status)) {
-      this._commandPollAttempts = (this._commandPollAttempts || 0) + 1
-      if (this._commandPollAttempts > 20) {
-        this.setData({ candidateError: toUserError({ code: 'SYNC_TIMEOUT' }, '设置回读') })
-        return
-      }
-      this._commandPollTimer = setTimeout(() => this.pollInlineCommand(), 800)
-    }
-  },
-
-  openManualSettings() { wx.navigateTo({ url: '/pages/tonight/index?source=ai-plan' }) },
-
-  openChat() {
-    const item = this.data.overview
-    if (item) wx.navigateTo({ url: `/pages/ai-chat/index?interpretationId=${item.interpretationId}&revision=${item.revision}` })
-  },
-
   openPlan() {
-    return this.toggleInlinePlan()
+    const overview = this.data.daily && this.data.daily.overview
+    if (overview && overview.kind === 'single-night') return navigate(this, wx, 'navigateTo', { url: '/pages/ai-plan/index?interpretationId=' + encodeURIComponent(overview.interpretationId) })
   },
-  openActiveCommand() {
-    if (this.data.activeCommand && !this.data.planOpen) return this.toggleInlinePlan()
-  },
-
-  onUnload() {
-    if (this._commandPollTimer) clearTimeout(this._commandPollTimer)
-  },
+  openRecordSource() { if (this.data.daily && this.data.daily.overview) return openSleepSource(this, wx, this.data.daily.overview) },
+  openRecords() { return navigate(this, wx, 'navigateTo', { url: '/pages/ai-records/index' }) },
+  openMemory() { return navigate(this, wx, 'navigateTo', { url: '/pages/ai-memory/index' }) },
   onShareAppMessage() { return buildDirectShare() },
   onShareTimeline() { return buildTimelineShare() },
 })
-
-function filterRecords(records, filter) {
-  return filter === 'all' ? records : records.filter((item) => item.kind === filter)
-}
-
-function heroForOverview(overview) {
-  if (!overview || overview.hasData === false) return '昨夜暂无有效记录'
-  if (overview.kind === 'seven-night') return '最近七晚趋势已整理'
-  return overview.eventCount
-    ? `昨夜收到 ${overview.eventCount} 条有效记录`
-    : '昨夜记录已整理'
-}
-
-function commandAppliedSettings(command) {
-  return command && command.status === 'applied' && command.matchesCandidate === true
-    ? command.readbackSettings
-    : null
-}
-
-function confirmInlinePlan() {
-  return new Promise((resolve) => {
-    wx.showModal({
-      title: '应用 AI 推荐？',
-      content: '仅今晚有效。月石会再次校验安全边界，设备回读一致后才会生效。',
-      confirmText: '确认应用',
-      cancelText: '再看看',
-      confirmColor: '#C97810',
-      success: (result) => resolve(Boolean(result.confirm)),
-      fail: () => resolve(false),
-    })
-  })
-}

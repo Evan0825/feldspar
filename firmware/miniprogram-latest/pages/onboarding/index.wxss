@@ -1,22 +1,98 @@
 .onboarding { padding-top: 50rpx; }
-.moon-mark { position: relative; width: 230rpx; height: 205rpx; margin: 110rpx auto 70rpx; border-radius: 48% 48% 43% 43%; background: linear-gradient(150deg, #fffdf7, #ddd0bd); box-shadow: 0 35rpx 70rpx rgba(93, 66, 37, .16); }
-.moon-mark::after { content: ""; position: absolute; left: 50%; bottom: 20rpx; width: 100rpx; height: 42rpx; transform: translateX(-50%); border-radius: 0 0 100rpx 100rpx; background: #dda03b; box-shadow: 0 12rpx 28rpx rgba(210, 139, 45, .48); }
-.moon-glow { position: absolute; inset: auto 32rpx -18rpx; height: 28rpx; border-radius: 50%; background: rgba(224, 154, 51, .4); filter: blur(12rpx); }
-.login-button { margin-top: 64rpx; }
+.login-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  padding: 24rpx 42rpx calc(28rpx + env(safe-area-inset-bottom));
+  background: radial-gradient(ellipse at 50% 39%, #ffeecf, var(--ivory) 62%);
+}
+.login-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 666rpx;
+  margin: 0 auto;
+  padding-bottom: clamp(30rpx, 11vh, 164rpx);
+}
+.login-panel .product-visual {
+  flex: none;
+  width: 748rpx;
+  max-width: calc(100% + 82rpx);
+  margin: 0;
+}
+.login-heading {
+  margin-bottom: 108rpx;
+  color: var(--ink);
+  font-size: 56rpx;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: center;
+}
+.login-vision {
+  margin-top: 24rpx;
+  color: var(--muted);
+  font-size: 36rpx;
+  line-height: 1.4;
+  text-align: center;
+}
+.login-button { flex-shrink: 0; width: 100%; margin: 80rpx 0 0; }
 .form-card { margin: 42rpx 0 30rpx; }
-.field-label { margin-bottom: 14rpx; color: #675d53; font-size: 24rpx; }
+.field-label { margin-bottom: 14rpx; color: var(--muted); font-size: 24rpx; }
 .field-label.second { margin-top: 34rpx; }
-.text-input { height: 88rpx; padding: 0 24rpx; border-radius: 22rpx; background: #f6efe5; }
+.text-input { height: 88rpx; padding: 0 24rpx; border-radius: 22rpx; background: var(--ivory); }
 .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
-.mode-option { padding: 24rpx; border: 2rpx solid #eadfce; border-radius: 24rpx; color: #675d53; font-size: 21rpx; line-height: 1.55; }
-.mode-option.active { border-color: #d28b2d; background: rgba(210, 139, 45, .09); }
+.mode-option { padding: 24rpx; border: 2rpx solid var(--border); border-radius: 24rpx; color: var(--muted); font-size: 21rpx; line-height: 1.55; }
+.mode-option.active { border-color: var(--amber-edge); background: var(--amber-soft); }
 .mode-option.disabled { opacity: .5; pointer-events: none; }
 .mode-option text { display: block; }
-.mode-title { margin-bottom: 7rpx; color: #2f2923; font-size: 27rpx; font-weight: 700; }
+.mode-title { margin-bottom: 7rpx; color: var(--ink); font-size: 27rpx; font-weight: 700; }
 .privacy-card { margin: 42rpx 0 30rpx; }
 .privacy-row { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; padding: 24rpx 0; border-bottom: 1rpx solid #eee4d7; }
 .privacy-row:last-child { border-bottom: 0; }
 .privacy-row view { flex: 1; }
 .privacy-row text { display: block; }
 .privacy-row text:first-child { font-weight: 650; }
-.privacy-row text:last-child { margin-top: 7rpx; color: #675d53; font-size: 21rpx; }
+.privacy-row text:last-child { margin-top: 7rpx; color: var(--muted); font-size: 21rpx; }
+
+.preferences-loading { padding: 60rpx 0; color: var(--muted); text-align: center; }
+.preferences-page { padding-top: 28rpx; }
+.form-card { margin: 24rpx 0 0; padding: 0; border: 0; background: transparent; }
+.field-label { color: var(--ink); font-size: 28rpx; font-weight: 600; }
+.text-input { height: 100rpx; border: 1rpx solid var(--border); border-radius: 22rpx; background: var(--paper); font-size: 30rpx; }
+.field-label.second { margin-top: 42rpx; }
+.mode-option { display: flex; align-items: center; gap: 12rpx; min-height: 108rpx; padding: 20rpx 16rpx; }
+.mode-option image { width: 36rpx; height: 36rpx; flex-shrink: 0; }
+.mode-title { flex: 1; margin: 0; font-size: 26rpx; font-weight: 500; white-space: nowrap; }
+.radio-mark { width: 32rpx; height: 32rpx; border: 3rpx solid #aaa195; border-radius: 50%; }
+.active .radio-mark { border: 9rpx solid var(--amber-edge); }
+.preferences-heading { display: flex; align-items: center; justify-content: space-between; margin: 32rpx 4rpx 12rpx; font-size: 28rpx; font-weight: 600; }
+.help-button { display: flex; align-items: center; justify-content: center; width: 88rpx; height: 88rpx; margin: -20rpx -20rpx -20rpx 0; padding: 24rpx; background: transparent; }
+.help-button image { width: 36rpx; height: 36rpx; }
+.reminder-options { padding: 0 24rpx; border: 1rpx solid var(--border); border-radius: 24rpx; background: var(--paper); }
+.reminder-option { display: flex; align-items: center; gap: 24rpx; min-height: 122rpx; font-size: 28rpx; }
+.reminder-option + .reminder-option { border-top: 1rpx solid var(--border); }
+.check-box { display: flex; align-items: center; justify-content: center; width: 42rpx; height: 42rpx; border: 2rpx solid #aaa195; border-radius: 10rpx; }
+.check-box.checked { border-color: var(--amber-edge); background: var(--amber); }
+.check-box image { width: 30rpx; height: 30rpx; }
+.preferences-save { margin-top: 48rpx; }
+
+.preferences-page .field-label, .preferences-page .preferences-heading { font-size: 34rpx; }
+.preferences-page .text-input { font-size: 34rpx; }
+.preferences-page .mode-title { font-size: 30rpx; }
+.preferences-page .reminder-option, .preferences-page .preferences-save { font-size: 34rpx; }
+
+.preferences-page .form-card { margin-top: 36rpx; }
+.preferences-page .text-input { height: 110rpx; }
+.preferences-page .field-label.second { margin-top: 54rpx; }
+.preferences-page .mode-option { min-height: 108rpx; }
+.preferences-page .preferences-heading { margin-top: 44rpx; }
+.preferences-page .reminder-option { min-height: 108rpx; }
+.preferences-page .field-label, .preferences-page .text-input, .preferences-page .reminder-option, .preferences-page .preferences-save { font-size: 30rpx; }
+
+.fixed-reminder { display: flex; align-items: center; gap: 24rpx; min-height: 108rpx; border-bottom: 1rpx solid var(--border); font-size: 34rpx; }
+.fixed-reminder image { width: 40rpx; height: 40rpx; }
+.fixed-reminder text:first-of-type { flex: 1; }
+.fixed-reminder text:last-child { color: var(--muted); font-size: 26rpx; }

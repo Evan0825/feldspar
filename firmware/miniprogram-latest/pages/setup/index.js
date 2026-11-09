@@ -38,10 +38,12 @@ Page({
     wifiProvisionSupported: null,
     wifiScanSource: '',
     showWifiPassword: false,
+    returnToDevice: false,
   },
 
   onLoad(options = {}) {
-    this._forceWifiSetup = options.forceWifi === '1'
+    const returnToDevice = options.forceWifi === '1'
+    this.setData({ returnToDevice })
     this._requestedDeviceId = String(options.deviceId || '')
     const serialNumber = normalizeSerialNumber(options.serialNumber || this.data.serialNumber)
     if (serialNumber !== this.data.serialNumber) this.setData({ serialNumber })
@@ -51,7 +53,7 @@ Page({
       wx.switchTab({ url: '/pages/home/index' })
       return
     }
-    if (this._forceWifiSetup && this._requestedDeviceId && isValidSerialNumber(serialNumber)) {
+    if (returnToDevice && this._requestedDeviceId && isValidSerialNumber(serialNumber)) {
       return this.resumeConnectedDevice({
         deviceId: this._requestedDeviceId,
         serialNumber,
@@ -150,7 +152,7 @@ Page({
         deviceId: connection.deviceId || deviceId,
         serialNumber: resolvedSerial,
         advertisedName: resolvedSerial,
-        name: '好眠睡眠主机',
+        name: '月石睡眠主机',
         provisioned: true,
         protocolVersion: connection.protocolVersion || '1.0',
       }
@@ -211,7 +213,7 @@ Page({
           ? '尚未读取到 FF05 安全配网特征。已自动刷新蓝牙服务；如果仍显示此提示，请点击“重新读取设备能力”后再试。'
           : '',
       })
-      if (refreshedStatus.connected && !this._forceWifiSetup) {
+      if (refreshedStatus.connected && !this.data.returnToDevice) {
         this.setMachine({ type: 'START_PROVISION' })
         this.setMachine({ type: 'PROVISIONED' })
         this.setData({
@@ -376,7 +378,14 @@ Page({
   },
 
   finish() {
-    wx.navigateTo({ url: '/pages/calibration/index' })
+    if (this.data.machine.step !== 'success') return
+    if (this.data.returnToDevice) {
+      wx.navigateBack()
+      return
+    }
+    wx.setStorageSync('haomian-setup-mode', 'normal')
+    wx.setStorageSync('haomian-setup-complete', true)
+    wx.switchTab({ url: '/pages/home/index' })
   },
 })
 

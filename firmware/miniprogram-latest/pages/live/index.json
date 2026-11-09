@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "实时守护",
+  "navigationBarTitleText": "实时状态",
   "enablePullDownRefresh": true,
   "usingComponents": {
     "state-banner": "/components/state-banner/index"

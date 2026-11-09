@@ -298,7 +298,7 @@ def _extract_chat_completion_text(payload: dict) -> str:
 
 
 async def request_llm_chat(messages: list, max_tokens: int, temperature: float = 0.7) -> str:
-    """Call Volcengine Coding Plan's OpenAI-compatible chat endpoint."""
+    """Call the configured OpenAI-compatible chat endpoint."""
     started = time.monotonic()
     overall = max(0.1, config.LLM_OVERALL_TIMEOUT_SECONDS)
     timeout = httpx.Timeout(
@@ -336,6 +336,8 @@ async def request_llm_chat(messages: list, max_tokens: int, temperature: float =
                 "max_tokens": max_tokens,
                 "stream": False,
             }
+            if config.LLM_PROVIDER in {"deepseek", "volcengine-ark-standard"}:
+                payload["thinking"] = {"type": "disabled"}
             try:
                 response = await asyncio.wait_for(
                     client.post(url, json=payload, headers=headers),

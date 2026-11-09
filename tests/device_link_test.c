@@ -3,8 +3,17 @@
 #include <string.h>
 #include <stdint.h>
 #include "../firmware/components/device_link/device_link.c"
+#include "lighting.h"
+#include "audio.h"
+#include "sfx.h"
 
 static bool configured, connected=true, stopped=true, queue_full;
+static bool light_enabled, light_breathing;
+static uint8_t light_r, light_g, light_b;
+static int sound_track, pending_track;
+static uint8_t sound_volume, sound_timer;
+static bool vibration_active;
+static unsigned vibration_starts;
 static uint64_t fake_utc_ms=1001000;
 static int64_t fake_us=1000000;
 static unsigned queue_count, published_acks, global_stops, motor_stops;
@@ -25,10 +34,44 @@ esp_err_t mqtt_mgr_publish(const char *topic,const char *data,int length) {
     if (strstr(topic,"/features/")) { memcpy(feature_json,data,(size_t)length); feature_json[length]=0; }
     return connected ? ESP_OK : ESP_FAIL;
 }
-bool haptic_is_active(void) { return false; }
+bool haptic_is_active(void) { return vibration_active; }
 bool haptic_stop_latched(void) { return stopped; }
+esp_err_t haptic_execute(const ag_request_t *request) {
+    assert(request->source==AG_MANUAL_TEST && request->percent==50 && request->duration_ms==2000);
+    if (stopped || vibration_active) return ESP_ERR_INVALID_STATE;
+    ++vibration_starts; vibration_active=true; return ESP_OK;
+}
 esp_err_t haptic_emergency_stop(void) { ++motor_stops; stopped=true; return ESP_OK; }
 esp_err_t device_control_stop_all(void) { ++global_stops; stopped=true; return ESP_OK; }
+esp_err_t lighting_set_enabled(bool enabled) { light_enabled=enabled; light_breathing=false; return ESP_OK; }
+esp_err_t lighting_set_rgb(uint8_t r, uint8_t g, uint8_t b) {
+    light_r=r; light_g=g; light_b=b; light_enabled=true; light_breathing=false; return ESP_OK;
+}
+esp_err_t lighting_set_breathing(uint8_t r, uint8_t g, uint8_t b) {
+    lighting_set_rgb(r,g,b); light_breathing=true; return ESP_OK;
+}
+void lighting_get_output(uint8_t *r, uint8_t *g, uint8_t *b, bool *enabled, bool *breathing) {
+    if (r) *r=light_r;
+    if (g) *g=light_g;
+    if (b) *b=light_b;
+    if (enabled) *enabled=light_enabled;
+    if (breathing) *breathing=light_breathing;
+}
+int sfx_count(void) { return 1; }
+bool sfx_info(int index, char *name, size_t length, uint32_t *size, uint8_t *format) {
+    (void)size; (void)format;
+    if (index!=1) return false;
+    snprintf(name,length,"sleep"); return true;
+}
+int sfx_current(void) { return sound_track; }
+esp_err_t sfx_play_timed(int index, uint8_t minutes) { pending_track=index; sound_timer=minutes; return ESP_OK; }
+esp_err_t sfx_set_timer(uint8_t minutes) { sound_timer=minutes; return ESP_OK; }
+uint16_t sfx_timer_state(uint8_t *minutes) { *minutes=sound_timer; return sound_timer*60; }
+esp_err_t sfx_stop(void) { pending_track=sound_track=0; return ESP_OK; }
+esp_err_t audio_stop(void) { return ESP_OK; }
+esp_err_t audio_set_volume(uint8_t volume) { sound_volume=volume; return ESP_OK; }
+uint8_t audio_get_volume(void) { return sound_volume; }
+audio_state_t audio_get_state(void) { return sound_track ? AUDIO_STATE_PLAYING : AUDIO_STATE_STOPPED; }
 int64_t esp_timer_get_time(void) { return fake_us; }
 int gettimeofday(struct timeval *tv, void *zone) {
     (void)zone; tv->tv_sec=(long)(fake_utc_ms/1000); tv->tv_usec=(int)(fake_utc_ms%1000)*1000; return 0;
@@ -98,6 +141,38 @@ int main(int argc,char **argv) {
     assert(!strcmp(ack_value("error_code"),"COMMAND_EXPIRED") && global_stops==1);
     command("{\"command_id\":\"auto\",\"type\":\"cloud_intervention\",\"expires_at\":1061}");
     assert(!strcmp(ack_value("error_code"),"AUTOMATIC_DISABLED") && global_stops==1);
+    command("{\"command_id\":\"light_locked\",\"type\":\"set_light\",\"expires_at\":1010,"
+            "\"payload\":{\"patch\":{\"enabled\":true},\"light\":{\"enabled\":true,\"brightness\":25,\"mode\":\"night-low\",\"color\":\"amber\"}}}");
+    assert(!light_enabled && !strcmp(ack_value("error_code"),"DEVICE_STOPPED"));
+    stopped=false;
+    command("{\"command_id\":\"light_start\",\"type\":\"set_light\",\"expires_at\":1010,"
+            "\"payload\":{\"patch\":{\"enabled\":true},\"light\":{\"enabled\":true,\"brightness\":25,\"mode\":\"bedtime-breathe\",\"color\":\"amber\"}}}");
+    assert(light_enabled && light_breathing && light_r==25 && light_g==13 && light_b==3);
+    assert(!strcmp(ack_value("status"),"applied"));
+    command("{\"command_id\":\"light_off\",\"type\":\"set_light\",\"expires_at\":1010,"
+            "\"payload\":{\"patch\":{\"enabled\":false},\"light\":{\"enabled\":false,\"brightness\":25,\"mode\":\"night-low\",\"color\":\"amber\"}}}");
+    assert(!light_enabled && !strcmp(ack_value("status"),"applied"));
+    command("{\"command_id\":\"light_stale\",\"type\":\"set_light\",\"expires_at\":1010,"
+            "\"payload\":{\"patch\":{\"brightness\":30},\"light\":{\"enabled\":true,\"brightness\":30,\"mode\":\"night-low\",\"color\":\"amber\"}}}");
+    assert(!light_enabled && !strcmp(ack_value("error_code"),"LIGHT_STATE_CHANGED"));
+    unsigned prior_sound_acks=published_acks;
+    command("{\"command_id\":\"sound_start\",\"type\":\"set_sound\",\"expires_at\":1010,"
+            "\"payload\":{\"patch\":{\"playing\":true},\"sound\":{\"playing\":true,\"volume\":32,\"scene\":\"sleep\",\"timer\":30}}}");
+    assert(pending_track==1 && sound_track==0 && published_acks==prior_sound_acks);
+    poll_sound_result();
+    assert(published_acks==prior_sound_acks);
+    sound_track=pending_track;
+    poll_sound_result();
+    assert(published_acks==prior_sound_acks+1 && !strcmp(ack_value("status"),"applied"));
+    command("{\"command_id\":\"sound_off\",\"type\":\"set_sound\",\"expires_at\":1010,"
+            "\"payload\":{\"patch\":{\"playing\":false},\"sound\":{\"playing\":false,\"volume\":32,\"scene\":\"sleep\",\"timer\":30}}}");
+    assert(sound_track==0 && !strcmp(ack_value("status"),"applied"));
+    char trial[256];
+    snprintf(trial,sizeof(trial),"{\"command_id\":\"trial_1\",\"type\":\"vibration_test\",\"expires_at\":1006,\"payload\":{\"session_id\":\"%s\"}}",s_session);
+    command(trial);
+    assert(vibration_starts==1 && !strcmp(ack_value("status"),"applied"));
+    command(trial);
+    assert(vibration_starts==1);
     unsigned before=published_acks;
     command("{\"command_id\":\"wrong\",\"type\":\"stop_all\",\"device_id\":\"other\"}");
     command("{}garbage");

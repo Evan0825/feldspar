@@ -20,13 +20,20 @@ function parseSafetyReply(message, requestId) {
 }
 
 function parseIoReply(message, requestId) {
-  if (!message || message.type !== 'IO' || !Array.isArray(message.fields) || message.fields.length !== 8) return null
+  if (!message || message.type !== 'IO' || !Array.isArray(message.fields) || ![8, 9, 11].includes(message.fields.length)) return null
   const f = message.fields
   if (!f.every(value => /^\d+$/.test(value)) || Number(f[0]) !== requestId || !['0','1'].includes(f[1])) return null
   const n = f.map(Number)
-  if (n.slice(2,6).some(value => value > 100) || n[6] > 2 || n[7] > 255) return null
-  return { requestId, light: { enabled: n[1] === 1, r: n[2], g: n[3], b: n[4] },
-    sound: { volume: n[5], playing: n[6] === 1, paused: n[6] === 2, index: n[7] }, physicalFeedback: false }
+  if (n.slice(2,6).some(value => value > 100) || n[6] > 2 || n[7] > 255 ||
+      (n.length >= 9 && (n[8] > 1 || n[8] === 1 && n[1] === 0))) return null
+  const light = { enabled: n[1] === 1, r: n[2], g: n[3], b: n[4] }
+  if (n.length >= 9) light.mode = n[8] === 1 ? 'bedtime-breathe' : 'night-low'
+  const sound = { volume: n[5], playing: n[6] === 1, paused: n[6] === 2, index: n[7] }
+  if (n.length === 11) {
+    if (![0, 15, 30, 60].includes(n[9]) || n[10] > n[9] * 60) return null
+    Object.assign(sound, { timerSupported: true, timer: n[9] || 'all-night', timerRemainingSeconds: n[10] })
+  }
+  return { requestId, light, sound, physicalFeedback: false }
 }
 
 module.exports = { parseSafetyReply, parseIoReply }

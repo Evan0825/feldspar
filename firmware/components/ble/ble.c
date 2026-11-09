@@ -232,6 +232,7 @@ static void handle_control(const uint8_t *data, uint16_t len)
         case BLE_CMD_SFX_DELETE:
         case BLE_CMD_SFX_LIST:
         case BLE_CMD_SFX_AUTO:
+        case BLE_CMD_SFX_TIMER:
             ble_notify_data("OTA,ERR,8");   /* 忙碌（升级中） */
             return;
         default: break;
@@ -243,7 +244,8 @@ static void handle_control(const uint8_t *data, uint16_t len)
         cmd == BLE_CMD_SFX_PLAY || (cmd == BLE_CMD_SFX_AUTO && len >= 2 && data[1]) ||
         (cmd == BLE_CMD_MOTOR_SPEED && len >= 2 && (int8_t)data[1] > 0) ||
         (cmd == BLE_CMD_LIGHT_LEVEL && len >= 2 && data[1]) ||
-        (cmd == BLE_CMD_LIGHT_RGB && len >= 4 && (data[1] || data[2] || data[3]));
+        ((cmd == BLE_CMD_LIGHT_RGB || cmd == BLE_CMD_LIGHT_BREATHE)
+            && len >= 4 && (data[1] || data[2] || data[3]));
     if (haptic_stop_latched() && activates_output) {
         ble_notify_data("CONTROL,ERR,stopped");
         return;
@@ -251,11 +253,20 @@ static void handle_control(const uint8_t *data, uint16_t len)
 
     switch (cmd) {
     case BLE_CMD_IO_STATE: {
-        uint8_t r,g,b; bool enabled;
-        lighting_get_state(&r,&g,&b,&enabled);
+        uint8_t r,g,b; bool enabled, breathing;
+        lighting_get_output(&r,&g,&b,&enabled,&breathing);
         char reply[64];
-        snprintf(reply,sizeof(reply),"IO,%u,%u,%u,%u,%u,%u,%u,%d",
+        int used = snprintf(reply,sizeof(reply),"IO,%u,%u,%u,%u,%u,%u,%u,%d",
             len>=3 ? rd16(data+1) : 0,enabled,r,g,b,audio_get_volume(),audio_get_state(),sfx_current());
+        if (len >= 4 && data[3] == 1 && used >= 0 && used < (int)sizeof(reply)) {
+            used += snprintf(reply + used, sizeof(reply) - (size_t)used, ",%u", (unsigned)breathing);
+            if (len >= 5 && data[4] == 1 && used < (int)sizeof(reply)) {
+                uint8_t minutes;
+                uint16_t remaining = sfx_timer_state(&minutes);
+                snprintf(reply + used, sizeof(reply) - (size_t)used, ",%u,%u",
+                         (unsigned)minutes, (unsigned)remaining);
+            }
+        }
         ble_notify_data(reply);
         break;
     }
@@ -284,6 +295,9 @@ static void handle_control(const uint8_t *data, uint16_t len)
             ESP_LOGI(TAG, "cmd: light rgb=%u,%u,%u",
                      (unsigned)data[1], (unsigned)data[2], (unsigned)data[3]);
         }
+        break;
+    case BLE_CMD_LIGHT_BREATHE:
+        if (len >= 4) lighting_set_breathing(data[1], data[2], data[3]);
         break;
     case BLE_CMD_MOTOR_SPEED:
         if (len >= 2) {
@@ -405,7 +419,7 @@ static void handle_control(const uint8_t *data, uint16_t len)
     case BLE_CMD_SFX_PLAY: {    /* [index]，0=按规则自动选 */
         char reply[16];
         if (len < 2) break;
-        esp_err_t err = sfx_play(data[1]);
+        esp_err_t err = sfx_play_timed(data[1], len == 3 ? data[2] : 0);
         if (err == ESP_OK) {
             snprintf(reply, sizeof(reply), "PLAYCMD,%u", (unsigned)data[1]);
         } else {
@@ -414,6 +428,9 @@ static void handle_control(const uint8_t *data, uint16_t len)
         ble_notify_data(reply);
         break;
     }
+    case BLE_CMD_SFX_TIMER:
+        if (len == 2) sfx_set_timer(data[1]);
+        break;
     case BLE_CMD_SFX_DELETE: {  /* [index] */
         char reply[16];
         if (len < 2) break;

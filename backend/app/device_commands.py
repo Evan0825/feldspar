@@ -55,6 +55,11 @@ def finalize_device_command_ack(
         if not stopped:
             final_status = "readback-mismatch"
             final_error_code = "STOP_READBACK_MISMATCH"
+    elif command["command_type"] == "vibration_test" and status == "applied":
+        started = readback.get("vibration_test") or {}
+        if not isinstance(started, dict) or started.get("started") is not True or started.get("duration_ms") != 2000:
+            final_status = "readback-mismatch"
+            final_error_code = "VIBRATION_TEST_READBACK_MISMATCH"
     elif command["command_type"] in {"apply_config", "apply_manual_config"} and status == "applied":
         expected = command["payload"].get("settings") or {}
         readback_config = readback.get("config") if isinstance(readback, dict) else None
@@ -94,6 +99,9 @@ def finalize_device_command_ack(
     elif command["command_type"] in {"set_sound", "set_light"} and status == "applied":
         state_key = "sound" if command["command_type"] == "set_sound" else "light"
         expected = command["payload"].get(state_key) or {}
+        patch = command["payload"].get("patch") or {}
+        if state_key == "sound" and patch.get("playing") is not True:
+            expected = patch
         actual = readback.get(state_key) if isinstance(readback, dict) else None
         if not _config_matches(expected, actual):
             final_status = "readback-mismatch"

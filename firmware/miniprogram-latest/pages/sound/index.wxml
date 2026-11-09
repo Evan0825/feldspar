@@ -1,40 +1,49 @@
 <view class="page sound-page">
-  <view class="brand">好眠 SnoozMate</view><view class="page-title">把声音留在设备里</view>
-  <view class="page-lead">连接蓝牙控制并读取设备状态。音效需先同步到设备；当前固件支持整晚播放。</view>
-  <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取声音状态</text><text class="state-copy">正在同步设备本地播放设置。</text></view>
+  <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取声音状态</text></view>
   <state-banner wx:elif="{{loadError}}" tone="danger" title="{{loadError.title}}" detail="{{loadError.detail}}" retryable="{{loadError.retryable}}" action="{{loadError.action}}" bindretry="retry" bindaction="handleServiceAction" />
-  <view class="empty-state" wx:elif="{{phase === 'empty'}}">暂无声音设置。请确认月石床头主机已连接。</view>
+  <view class="empty-state" wx:elif="{{phase === 'empty'}}">暂无声音设置，请确认设备连接。</view>
   <block wx:else>
-  <state-banner wx:if="{{sound.syncPending}}" tone="warning" title="设备回读已确认，云端待同步" detail="当前显示设备驱动状态。请联网后重新读取，不必重复执行。" />
-  <state-banner wx:if="{{!sound.confirmed}}" tone="warning" title="尚未核验设备状态" detail="当前仅有云端偏好，连接设备后才能确认实际驱动状态。" />
-  <state-banner wx:if="{{actionError}}" tone="danger" title="{{actionError.title}}" detail="{{actionError.detail}}" retryable="{{actionError.retryable}}" action="{{actionError.action}}" bindretry="retryAction" bindaction="handleActionError" />
-  <state-banner wx:if="{{controlError}}" tone="warning" title="{{controlError.title}}" detail="{{controlError.detail}}" retryable="{{controlError.retryable}}" action="{{controlError.action}}" bindretry="retry" bindaction="handleServiceAction" />
+    <state-banner wx:if="{{actionError}}" tone="danger" title="{{actionError.title}}" detail="{{actionError.detail}}" retryable="{{actionError.retryable}}" action="{{actionError.action}}" bindretry="retryAction" bindaction="handleActionError" />
+    <state-banner wx:if="{{controlError}}" tone="warning" title="{{controlError.title}}" detail="{{controlError.detail}}" retryable="{{controlError.retryable}}" action="{{controlError.action}}" bindretry="retry" bindaction="handleServiceAction" />
+    <state-banner wx:elif="{{sound.syncPending}}" tone="warning" title="设备已确认，云端待同步" />
+    <state-banner wx:elif="{{!sound.confirmed && status.ble.connected}}" tone="warning" title="设备播放状态待确认" />
 
-  <view class="sound-hero">
-    <view class="wave {{controlAvailable ? (sound.playing ? 'playing' : '') : (previewPlaying ? 'playing' : '')}}" aria-label="{{controlAvailable ? (sound.playing ? '设备播放中' : '设备已停止') : (previewPlaying ? '手机试听播放中' : '手机试听已暂停')}}"><view></view><view></view><view></view><view></view><view></view><view></view><view></view><view></view><view></view></view>
-    <view class="playback-state {{controlAvailable ? (sound.playing ? 'playing' : '') : (previewPlaying ? 'playing' : '')}}"><view></view><text>{{controlAvailable ? (sound.playing ? '设备播放中' : '设备已停止') : (previewPlaying ? '手机试听中' : '试听已暂停')}}</text></view>
-    <text>{{sound.sceneName}}</text><text>{{sound.trackName}}</text>
-    <button hover-class="none" class="play-button" loading="{{syncing}}" disabled="{{syncing}}" bindtap="togglePlayback">{{controlAvailable ? (sound.playing ? '停止设备播放' : '播放到设备') : (previewPlaying ? '暂停试听' : '开始试听')}}</button>
-    <text class="preview-note" wx:if="{{!controlAvailable && previewMode}}">设备不可用，当前仅在手机试听</text>
-    <text class="preview-note error" wx:if="{{previewError}}">{{previewError}}</text>
-  </view>
+    <image class="product-visual" src="/images/system-hero.png" mode="aspectFit" aria-label="月石床头主机与枕下振动片" />
+    <view class="card player-card">
+      <view class="row player-track">
+        <text class="track-name">{{sound.trackName || sound.sceneName}}</text>
+        <text wx:if="{{controlAvailable ? sound.playing : previewPlaying}}" class="playback-target">{{controlAvailable ? '设备播放中' : '手机试听中'}}</text>
+      </view>
+      <button hover-class="none" class="primary-button play-button" loading="{{syncing}}" disabled="{{syncing}}" bindtap="togglePlayback">
+        <image wx:if="{{!syncing}}" src="/images/ui/{{controlAvailable ? (sound.playing ? 'stop' : 'play') : (previewPlaying ? 'pause' : 'play')}}.png" mode="aspectFit" />
+        <text>{{controlAvailable ? (sound.playing ? '停止播放' : '播放到设备') : (previewPlaying ? '暂停试听' : '手机试听')}}</text>
+      </button>
+      <text class="preview-error" wx:if="{{previewError}}">{{previewError}}</text>
+      <view class="volume-control">
+        <view class="row"><view class="sound-label"><image src="/images/ui/volume.png" mode="aspectFit" /><text>音量</text></view><text class="control-value">{{volumeDraft}}%</text></view>
+        <slider min="0" max="100" value="{{volumeDraft}}" disabled="{{syncing}}" aria-label="音量" activeColor="#F9C747" backgroundColor="#EAE2D5" block-color="#FFFDF8" block-size="26" bindchanging="previewVolume" bindchange="setVolume" />
+      </view>
+    </view>
 
-  <view class="card slider-card">
-    <view class="slider-heading"><view><text>同步自定义音效</text><text>支持 PCM/Float WAV，自动转为 16kHz 单声道 IMA-ADPCM</text></view><text class="slider-value" wx:if="{{uploading}}">{{uploadProgress}}%</text></view>
-    <button hover-class="none" class="primary-button" loading="{{uploading}}" disabled="{{!controlAvailable || uploading}}" bindtap="chooseAndUploadWav">选择 WAV 并同步</button>
-  </view>
+    <view class="card playback-settings" wx:if="{{controlAvailable}}">
+      <view class="row manual-stop" wx:if="{{manualStopOnly}}"><text>定时关闭</text><text>{{timerUnavailableText}}</text></view>
+      <block wx:else>
+        <view class="row"><text class="sound-label">定时关闭</text><text wx:if="{{timerLabel}}" class="control-value">{{timerLabel}}</text></view>
+        <view class="chip-row timer-options"><button hover-class="none" wx:for="{{timers}}" wx:key="*this" role="radio" aria-checked="{{sound.timer === item}}" class="chip {{sound.timer === item ? 'active' : ''}}" data-timer="{{item}}" disabled="{{syncing}}" bindtap="setTimer">{{item === 'all-night' ? '不定时' : item + ' 分钟'}}</button></view>
+      </block>
+    </view>
 
-  <view class="section-title">声音场景</view>
-  <view class="scene-grid"><view wx:for="{{sound.scenes}}" wx:key="id" class="scene-card {{sound.scene === item.id ? 'active' : ''}} {{!controlAvailable ? 'disabled' : ''}}" data-scene="{{item.id}}" bindtap="selectScene"><text>{{item.name}}</text><text>{{item.trackName}}</text></view></view>
+    <view class="section-title">声音场景</view>
+    <view class="scene-grid">
+      <button wx:for="{{sound.scenes}}" wx:key="id" hover-class="none" role="radio" aria-checked="{{sound.scene === item.id}}" class="scene-card {{sound.scene === item.id ? 'active' : ''}}" disabled="{{syncing}}" data-scene="{{item.id}}" bindtap="selectScene">
+        <image src="/images/ui/scene-{{sceneIcons[item.id] || 'default'}}{{sound.scene === item.id ? '-active' : ''}}.png" mode="aspectFit" /><text>{{item.name}}</text>
+      </button>
+    </view>
 
-  <view class="card slider-card">
-    <view class="slider-heading"><view><text>音量</text><text>拖动调节设备音量</text></view><text class="slider-value">{{volumeDraft}}%</text></view>
-    <view class="large-slider"><slider min="0" max="100" value="{{volumeDraft}}" disabled="{{!controlAvailable}}" activeColor="#D28B2D" backgroundColor="#E7DCCF" block-color="#FFF8EE" block-size="28" bindchanging="previewVolume" bindchange="setVolume" /></view>
-    <view class="slider-scale"><text>轻</text><text>响</text></view>
-  </view>
-
-  <view class="section-title">定时关闭</view>
-  <view class="chip-row"><view wx:for="{{timers}}" wx:key="*this" class="chip {{sound.timer === item ? 'active' : ''}} {{!controlAvailable ? 'disabled' : ''}}" data-timer="{{item}}" bindtap="setTimer">{{item === 'all-night' ? '整夜' : item + ' 分钟'}}</view></view>
-  <view class="safe-note">灯光、音量与播放经 0xFF01 下发；音效文件经 0xFF02 分帧传输，并执行帧 CRC-16 与文件 CRC-32 校验。</view>
+    <view class="card upload-card">
+      <view class="row"><view class="sound-label"><image src="/images/ui/upload.png" mode="aspectFit" /><text>自定义音效</text></view><text class="control-value" wx:if="{{uploading}}">{{uploadProgress}}%</text></view>
+      <button hover-class="none" class="secondary-button upload-button" loading="{{uploading}}" disabled="{{!canUpload || uploading}}" bindtap="chooseAndUploadWav">同步 WAV 文件</button>
+      <text class="upload-note" wx:if="{{!canUpload}}">通过真机蓝牙连接后可同步。</text>
+    </view>
   </block>
 </view>

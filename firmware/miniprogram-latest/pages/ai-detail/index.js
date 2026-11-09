@@ -1,19 +1,22 @@
 const services = require('../../services/index')
+const { openSleepSource } = require('../../domain/ai-navigation')
 const { toUserError } = require('../../domain/service-error')
 
 Page({
   data: { interpretation: null, selectedEvidenceId: '', loading: true, error: null },
-  onLoad(options) { this.load(decodeURIComponent(options.interpretationId || '')) },
+  onLoad(options = {}) { this.load(decodeURIComponent(options.interpretationId || ''), options.sourceDate) },
 
-  async load(interpretationId) {
+  onShow() { this._routePending = false },
+
+  async load(interpretationId, sourceDate) {
     if (!interpretationId) {
       this.setData({ loading: false, error: toUserError(new Error('AI_INTERPRETATION_NOT_FOUND'), 'AI 解读') })
       return
     }
     this.setData({ loading: true, error: null })
     try {
-      const interpretation = await services.ai.getInterpretation(interpretationId)
-      this.setData({ interpretation, selectedEvidenceId: interpretation.evidence[0] ? interpretation.evidence[0].id : '' })
+      const interpretation = await services.ai.getInterpretation(interpretationId, undefined, sourceDate)
+      this.setData({ interpretation, selectedEvidenceId: '' })
     } catch (error) {
       this.setData({ error: toUserError(error, 'AI 解读') })
     } finally {
@@ -27,9 +30,12 @@ Page({
   },
   openChat() {
     const item = this.data.interpretation
-    if (item) wx.navigateTo({ url: `/pages/ai-chat/index?interpretationId=${item.interpretationId}&revision=${item.revision}` })
+    if (item) wx.navigateTo({ url: `/pages/ai-chat/index?interpretationId=${encodeURIComponent(item.interpretationId)}&revision=${item.revision}&sourceDate=${encodeURIComponent(item.sourceDate || '')}` })
   },
-  openSleepRecord() { wx.switchTab({ url: '/pages/report/index' }) },
+  openSleepRecord() {
+    if (!this.data.interpretation) return
+    return openSleepSource(this, wx, this.data.interpretation)
+  },
   openPlan() {
     const item = this.data.interpretation
     if (item && item.kind === 'single-night') wx.navigateTo({ url: `/pages/ai-plan/index?interpretationId=${item.interpretationId}` })

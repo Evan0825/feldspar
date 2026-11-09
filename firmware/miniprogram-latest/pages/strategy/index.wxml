@@ -1,0 +1,48 @@
+<view class="page strategy-page">
+  <view class="state-card" wx:if="{{loading}}">正在读取方案</view>
+  <state-banner wx:if="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="retry" bindaction="handleServiceAction" />
+  <view class="strategy-surface" wx:if="{{!loading && strategy && !error}}">
+    <view class="current-stage"><view><text class="current-title">{{strategy.title}}</text><text class="stage-badge">{{strategy.badge}}</text></view></view>
+    <view class="collection-card">
+      <view class="row"><text class="collection-title">{{strategy.stageIndex > 0 ? '校准数据采集' : '数据采集'}}</text><button hover-class="none" class="collection-data-link" bindtap="openSleepData">查看数据</button></view>
+      <block wx:if="{{strategy.stageIndex > 0}}">
+        <text class="collection-caption">{{calibration.coverageLabel || '最近 7 晚'}}</text>
+        <view class="collection-numbers">
+          <view><text class="collection-count">{{calibration ? calibration.nights : '—'}}</text><text>{{calibration.days > 0 ? ' / ' + calibration.days : ''}} 晚有效记录</text></view>
+          <view><text class="collection-count">{{calibration && calibration.feedback !== null ? calibration.feedback : '—'}}</text><text>晚已填反馈</text></view>
+        </view>
+        <view class="progress" wx:if="{{calibration && calibration.days > 0}}"><view style="width:{{calibration.percent}}%" /></view>
+        <text wx:if="{{!calibration}}" class="collection-caption">{{calibrationLoading ? '正在读取' : '进度待同步'}}</text>
+      </block>
+      <block wx:else>
+        <view class="collection-numbers"><view><text class="collection-count">{{strategy.collectedNights === null ? '—' : strategy.collectedNights}}</text><text> / 7 晚有效记录</text></view></view>
+        <view class="progress" wx:if="{{strategy.progressPercent !== null}}"><view style="width:{{strategy.progressPercent}}%" /></view>
+        <text class="collection-caption" wx:if="{{strategy.collectedNights === null || strategy.canReview}}">{{strategy.collectedNights === null ? '进度待同步' : '收集已达标'}}</text>
+      </block>
+      <button wx:if="{{strategy.canReview}}" hover-class="none" class="primary-button plan-review-button" loading="{{planLoading}}" disabled="{{planLoading}}" bindtap="openPlan">{{strategy.stageIndex > 0 ? '查看校准建议' : '查看初步方案'}}</button>
+      <state-banner wx:if="{{planError}}" tone="warning" title="{{planError.title}}" detail="{{planError.detail}}" />
+    </view>
+    <button hover-class="none" class="parameters-toggle stages-toggle" aria-expanded="{{stagesOpen}}" bindtap="toggleStages"><text>全部阶段</text><text>{{stagesOpen ? '收起' : '展开'}}</text></button>
+    <view class="stage-list" wx:if="{{stagesOpen}}">
+      <view class="stage-row {{item.current ? 'current' : ''}} {{item.complete ? 'complete' : ''}}" wx:for="{{strategy.stages}}" wx:key="id">
+        <view class="stage-marker"><view class="stage-dot" /><view class="stage-line" wx:if="{{index < 3}}" /></view>
+        <view class="stage-copy"><text class="stage-title">{{item.title}}</text><text class="stage-detail">{{item.detail}}</text></view>
+        <text class="stage-badge" wx:if="{{item.current}}">{{strategy.badge}}</text>
+      </view>
+    </view>
+    <view class="detail-row"><image src="/images/ui/document.png" mode="aspectFit" /><text>运行方式</text><text>{{strategy.operation}}</text></view>
+    <view class="detail-row"><image src="/images/ui/vibration.png" mode="aspectFit" /><text>默认提醒</text><text>振动</text></view>
+    <view class="detail-row"><image src="/images/ui/ban.png" mode="aspectFit" /><text>提醒限制</text><text>{{strategy.restriction}}</text></view>
+    <view class="transition-note">{{strategy.transition}}</view>
+  </view>
+  <block wx:if="{{!loading && strategy && !error}}">
+    <button hover-class="none" class="parameters-toggle" bindtap="toggleParameters"><text>当前参数</text><text>{{parametersOpen ? '⌄' : '›'}}</text></button>
+    <view class="parameters" wx:if="{{parametersOpen && settings}}">
+      <view><text>灵敏度</text><text>{{settings.sensitivity === 1 ? '克制' : settings.sensitivity === 3 ? '积极' : '均衡'}}</text></view>
+      <view><text>最大振动</text><text>{{settings.maxVibrationLevel}} 级</text></view>
+      <view><text>入睡保护</text><text>{{settings.sleepProtectionMinutes}} 分钟</text></view>
+      <view><text>每晚最多</text><text>{{settings.nightlyInterventionLimit}} 次</text></view>
+      <button hover-class="none" class="secondary-button" bindtap="openSettings">查看今晚设置</button>
+    </view>
+  </block>
+</view>

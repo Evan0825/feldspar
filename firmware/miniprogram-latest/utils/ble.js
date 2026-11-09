@@ -8,10 +8,11 @@ const BLE_PROTOCOL = Object.freeze({
   data: 'FF04',
   provision: 'FF05',
   requestedMtu: 512,
-  fallbackMtu: 20,
+  fallbackMtu: 23, // ATT default leaves 20 bytes for the characteristic value.
 })
 
 const LIGHT_COLOR_PRESETS = Object.freeze({
+  white: Object.freeze({ name: 'white', label: '白光', colorTemperatureKelvin: null, r: 255, g: 255, b: 255 }),
   amber: Object.freeze({
     name: 'amber',
     label: '暖琥珀',
@@ -25,6 +26,7 @@ const LIGHT_COLOR_PRESETS = Object.freeze({
 const COMMANDS = Object.freeze({
   LIGHT_LEVEL: 0x01,   // 白光亮度：[level 0-100]，0=关灯
   LIGHT_RGB: 0x09,     // RGB 灯带颜色：[r,g,b 各 0-100]，全 0=关灯（固件 lighting_set_rgb）
+  LIGHT_BREATHE: 0x0b, // 手动呼吸灯：[r,g,b] 为亮度峰值
   MOTOR_SPEED: 0x02,
   MOTOR_STOP: 0x03,
   SAFETY_STATE: 0x24,
@@ -43,6 +45,7 @@ const COMMANDS = Object.freeze({
   SFX_DELETE: 0x33,
   SFX_LIST: 0x34,
   SFX_AUTO: 0x35,
+  SFX_TIMER: 0x36,
   // —— 安全配网（0xFF05 特征，未来固件）——
   WIFI_SCAN: 0x40,
   WIFI_PROVISION_BEGIN: 0x41,
@@ -54,6 +57,7 @@ const COMMANDS = Object.freeze({
   WIFI_STATE: 0x42,   // 查询状态，即时回 WIFI,OFF / WIFI,IDLE,<ssid> / WIFI,CONNECTED,<ssid>,<ip>
   WIFI_FORGET: 0x43,  // 清除凭据并断开，回 WIFI,FORGOT
   WIFI_SCAN_SIMPLE: 0x44, // 当前固件扫描，回 WIFI,AP,... / WIFI,SCANEND,n
+  OTA_QUERY: 0x51,     // 只读当前固件版本与 OTA 状态
 })
 
 function protocolError(code, message) {
@@ -198,19 +202,20 @@ function decodeUtf8(value) {
   }
 }
 
+const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
 function encodeBase64(value) {
   const bytes = value instanceof Uint8Array ? value : new Uint8Array(value || 0)
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0789+/'
   let output = ''
   for (let offset = 0; offset < bytes.length; offset += 3) {
     const a = bytes[offset]
     const b = offset + 1 < bytes.length ? bytes[offset + 1] : 0
     const c = offset + 2 < bytes.length ? bytes[offset + 2] : 0
     const value24 = (a << 16) | (b << 8) | c
-    output += alphabet[(value24 >>> 18) & 63]
-    output += alphabet[(value24 >>> 12) & 63]
-    output += offset + 1 < bytes.length ? alphabet[(value24 >>> 6) & 63] : '='
-    output += offset + 2 < bytes.length ? alphabet[value24 & 63] : '='
+    output += BASE64_ALPHABET[(value24 >>> 18) & 63]
+    output += BASE64_ALPHABET[(value24 >>> 12) & 63]
+    output += offset + 1 < bytes.length ? BASE64_ALPHABET[(value24 >>> 6) & 63] : '='
+    output += offset + 2 < bytes.length ? BASE64_ALPHABET[value24 & 63] : '='
   }
   return output
 }
@@ -220,13 +225,12 @@ function decodeBase64(value) {
   if (!text || text.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(text)) {
     throw protocolError('INVALID_WIFI_DATA', 'Wi-Fi 名称编码无效')
   }
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0789+/'
   const output = []
   for (let offset = 0; offset < text.length; offset += 4) {
-    const a = alphabet.indexOf(text[offset])
-    const b = alphabet.indexOf(text[offset + 1])
-    const c = text[offset + 2] === '=' ? 0 : alphabet.indexOf(text[offset + 2])
-    const d = text[offset + 3] === '=' ? 0 : alphabet.indexOf(text[offset + 3])
+    const a = BASE64_ALPHABET.indexOf(text[offset])
+    const b = BASE64_ALPHABET.indexOf(text[offset + 1])
+    const c = text[offset + 2] === '=' ? 0 : BASE64_ALPHABET.indexOf(text[offset + 2])
+    const d = text[offset + 3] === '=' ? 0 : BASE64_ALPHABET.indexOf(text[offset + 3])
     if (a < 0 || b < 0 || c < 0 || d < 0) throw protocolError('INVALID_WIFI_DATA', 'Wi-Fi 名称编码无效')
     const value24 = (a << 18) | (b << 12) | (c << 6) | d
     output.push((value24 >>> 16) & 0xff)
@@ -323,7 +327,7 @@ function parseAdvertisement(device, prefix = BLE_PROTOCOL.namePrefix) {
     transportDeviceId: device.deviceId,
     serialNumber: `${expectedPrefix}${suffix}`,
     advertisedName: `${expectedPrefix}${suffix}`,
-    name: '好眠睡眠主机',
+    name: '月石睡眠主机',
     mode: 'ble-local',
     signal: '已发现',
     rssi: Number(device.RSSI || -100),

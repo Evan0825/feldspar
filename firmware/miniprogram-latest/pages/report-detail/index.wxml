@@ -1,0 +1,83 @@
+<view class="page data-page">
+  <button wx:if="{{canBack}}" class="period-return" hover-class="none" bindtap="backToPeriod"><image src="/images/ai-ui/chevron-right.png" />返回上一级数据</button>
+  <view class="data-toolbar">
+    <button wx:if="{{!canBack}}" class="range-arrow" hover-class="none" aria-label="{{scope === 'night' ? '前一天' : scope === 'week' ? '上一周' : '上个月'}}" data-direction="-1" bindtap="stepPeriod"><image class="previous-arrow" src="/images/ai-ui/chevron-right.png" /></button>
+    <button class="filter-trigger" hover-class="none" bindtap="openCalendar" aria-label="{{scope === 'night' ? '日' : scope === 'week' ? '周' : '月'}}，{{accessibleDateLabel}}，打开日历筛选"><image src="/images/ai-ui/calendar.png" mode="aspectFit" /><text class="filter-label">{{selectedDateLabel}}</text><text class="scope-label">{{scope === 'night' ? '日' : scope === 'week' ? '周' : '月'}}</text></button>
+    <button wx:if="{{!canBack}}" class="range-arrow" hover-class="none" aria-label="{{scope === 'night' ? '后一天' : scope === 'week' ? '下一周' : '下个月'}}" disabled="{{!canAdvance}}" data-direction="1" bindtap="stepPeriod"><image src="/images/ai-ui/chevron-right.png" /></button>
+    <button class="data-help" hover-class="none" bindtap="toggleExplanation" aria-label="数据说明"><image src="/images/ui/info.png" /></button>
+  </view>
+  <button class="collection-link" hover-class="none" bindtap="openCollection">
+    <view class="collection-main"><view class="metric-heading"><view class="metric-symbol"><image src="/images/ai-ui/calendar.png" aria-hidden="true" /></view><text>{{collection.calibrating ? '校准数据采集' : '数据采集'}}</text></view>
+    <view class="collection-summary"><text>{{collection ? '已采集 ' + collection.nights + (collection.days > 0 ? '/' + collection.days : '') + ' 晚' : collectionLoading ? '正在读取' : '进度待同步'}}</text><image src="/images/ai-ui/chevron-right.png" /></view></view>
+    <view class="collection-track" wx:if="{{collectionPercent !== null}}" aria-hidden="true"><view style="width: {{collectionPercent}}%" /></view>
+  </button>
+  <view class="state-card" wx:if="{{loading}}">正在读取睡眠数据</view>
+  <state-banner wx:elif="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="retry" bindaction="handleServiceAction" />
+  <view class="empty-state" wx:elif="{{phase === 'empty'}}"><text>{{scope === 'night' ? '该日期暂无完整记录' : '所选周期暂无有效记录'}}</text><button class="text-action" hover-class="none" bindtap="openCalendar">选择其他日期</button></view>
+  <block wx:elif="{{scope === 'night' && report}}">
+    <view class="duration-hero"><view class="hero-heading"><view class="metric-heading"><view class="metric-symbol"><image src="/images/ui/monitoring.png" aria-hidden="true" /></view><text>有效监测</text></view><view class="hero-meta"><text wx:if="{{report.dataQualityScore !== null && report.dataQualityScore !== undefined}}" class="quality-label">采集质量 {{quality}}</text><text class="demo-label" wx:if="{{demoMode || report.dataSource === 'simulated' || report.dataSource === 'mixed'}}">{{report.dataSource === 'mixed' ? '含模拟测试数据' : '示例数据'}}</text></view></view><view wx:if="{{durationHours !== '—'}}" class="duration-number"><text>{{durationHours}}</text><text>小时</text><text>{{durationMinutes}}</text><text>分</text></view><text wx:else class="duration-unknown">未核验</text><text class="time-range">{{report.eventSpanOnly ? '事件覆盖 · ' : ''}}{{nightDetail.rangeLabel}}</text></view>
+    <view class="metric-heading snore-rate"><view class="metric-symbol neutral"><image src="/images/ui/sound.png" aria-hidden="true" /></view><text>鼾声频率</text><text class="snore-rate-value">{{snoreRateLabel}}</text><text wx:if="{{snoreRateLabel !== '—'}}">次/小时</text></view>
+    <view class="comparison-card">
+      <text class="comparison-title">提醒与响应</text>
+      <view class="comparison-columns">
+        <view class="comparison-metric" wx:for="{{reminderComparison}}" wx:key="name">
+          <view class="capsule-track" wx:if="{{reminderComparison[0].value > 0}}" aria-hidden="true"><view class="capsule-fill {{index === 1 ? 'capsule-response' : ''}}" style="height: {{item.fill}}%" /></view>
+          <view class="comparison-value {{reminderComparison[0].value > 0 ? 'in-chart' : ''}}"><text>{{item.value === null ? '—' : item.value}}</text><text wx:if="{{item.value !== null}}" class="comparison-unit">次</text></view>
+          <view class="metric-heading comparison-label"><view class="metric-symbol {{index === 1 ? 'response' : ''}}"><image src="{{item.icon}}" aria-hidden="true" /></view><text>{{item.name}}</text></view>
+        </view>
+      </view>
+    </view>
+    <view class="module-heading"><text>整晚事件</text><button class="text-action" hover-class="none" bindtap="toggleEvents">{{eventsOpen ? '收起记录' : '全部记录'}}<image src="/images/ai-ui/chevron-right.png" /></button></view>
+    <view class="night-chart night-timeline" wx:if="{{nightDetail.hasTimeline}}"><sleep-chart wx:if="{{!calendarOpen && !infoTitle}}" kind="night" chart="{{chart}}" bindselect="selectReminder" /><view wx:else style="height:304rpx" /><view class="chart-caption" wx:if="{{nightDetail.protectionEnd || nightDetail.missingMinutes !== null || report.interventionCount > nightDetail.reminders.length}}"><text wx:if="{{nightDetail.protectionEnd}}">保护至 {{nightDetail.protectionEnd}}</text><text wx:if="{{nightDetail.missingMinutes !== null}}">缺失 {{nightDetail.missingMinutes}} 分</text><text wx:if="{{report.interventionCount > nightDetail.reminders.length}}">已同步 {{nightDetail.reminders.length}}/{{report.interventionCount}} 次提醒</text></view></view>
+    <view class="inline-state" wx:elif="{{eventError}}"><text>{{eventError.title}}</text><button class="text-action" hover-class="none" bindtap="retry">重新读取</button></view>
+    <view class="inline-state" wx:else>整晚事件时间尚未同步</view>
+    <view class="event-card" wx:if="{{selectedReminder}}"><view class="module-heading"><text>触发与响应</text><text class="selection-label">{{reminderIndex + 1}} / {{nightDetail.reminders.length}}</text></view>
+      <view class="chain-row"><text class="chain-time">{{selectedReminder.trigger ? selectedReminder.trigger.time : '—'}}</text><view class="chain-dot" /><text>{{selectedReminder.trigger ? selectedReminder.trigger.title : '触发详情待同步'}}</text></view>
+      <view class="chain-row"><text class="chain-time">{{selectedReminder.time}}</text><view class="chain-dot amber" /><text>{{selectedReminder.title}}<text wx:if="{{selectedReminder.detail}}"> · {{selectedReminder.detail}}</text></text></view>
+      <view class="chain-row"><text class="chain-time">{{selectedReminder.response ? selectedReminder.response.time : '—'}}</text><view class="chain-dot {{selectedReminder.response ? 'olive' : ''}}" /><text>{{selectedReminder.response ? selectedReminder.response.title : '响应记录未关联'}}</text></view>
+      <text class="sync-note" wx:if="{{!nightDetail.hasTimeline && report.interventionCount > nightDetail.reminders.length}}">已同步{{nightDetail.reminders.length}}/{{report.interventionCount}}次提醒</text>
+      <view class="detail-actions"><button class="text-action" hover-class="none" bindtap="askAi">问 AI<image src="/images/ai-ui/chevron-right.png" /></button><view class="reminder-nav"><button hover-class="none" data-direction="-1" bindtap="moveReminder" aria-label="上一次提醒" disabled="{{reminderIndex === 0}}"><image class="previous-arrow" src="/images/ai-ui/chevron-right.png" /></button><button hover-class="none" data-direction="1" bindtap="moveReminder" aria-label="下一次提醒" disabled="{{reminderIndex === nightDetail.reminders.length - 1}}"><image src="/images/ai-ui/chevron-right.png" /></button></view></view>
+    </view>
+    <button wx:if="{{!selectedReminder && report.sourceDate}}" class="text-action" hover-class="none" bindtap="askAi">问 AI<image src="/images/ai-ui/chevron-right.png" /></button>
+    <view class="feedback-row"><text>晨间感受</text><text class="feedback-tag {{feedbackLabel === '未被弄醒' ? 'olive' : ''}}">{{feedbackLabel}}</text></view>
+    <button wx:if="{{interpretation}}" class="interpretation-link" hover-class="none" bindtap="openInterpretation"><text>睡眠解读</text><image src="/images/ai-ui/chevron-right.png" /></button>
+    <block wx:if="{{eventsOpen}}"><view class="module-heading" id="all-events"><text>全部时间记录</text><view class="record-actions"><button class="text-action" hover-class="none" bindtap="toggleEvents">收起</button><button class="text-action" hover-class="none" bindtap="openEvents">按类型筛选<image src="/images/ai-ui/chevron-right.png" /></button></view></view>
+      <view class="event-list" wx:if="{{nightDetail.events.length}}"><view class="event-line"><text>{{nightDetail.start}}</text><view><text>开始记录</text></view></view><view class="event-line" wx:for="{{nightDetail.events}}" wx:key="id"><text>{{item.time}}</text><view><text>{{item.title}}</text><text wx:if="{{item.endTime}}">{{item.time}}—{{item.endTime}}</text><text wx:if="{{item.detail}}">{{item.detail}}</text></view></view><view class="event-line"><text>{{nightDetail.end}}</text><view><text>记录结束</text></view></view></view><view class="inline-state" wx:else>暂无已同步事件</view>
+    </block>
+  </block>
+  <block wx:elif="{{trend}}">
+    <view class="data-meta"><text>{{validCount}}/{{elapsedDays}}晚有效记录</text><text wx:if="{{demoMode || periodDataSource === 'simulated' || periodDataSource === 'mixed'}}">{{periodDataSource === 'mixed' ? '含模拟测试数据' : '示例数据'}}</text></view>
+    <view class="period-hero"><view class="metric-heading hero-label"><view class="metric-symbol neutral"><image src="/images/ui/sound.png" aria-hidden="true" /></view><text>平均鼾声频率</text></view><view class="period-number-row"><text class="period-number">{{trend.rateLabel}}</text><text class="period-unit">次/小时</text><text class="comparison" wx:if="{{scope === 'week'}}">{{comparisonLabel}}</text></view></view>
+    <view class="legend" wx:if="{{scope === 'week'}}"><view><view class="legend-line amber" />所选周期</view><view><view class="legend-line gray" />上周同期</view></view>
+    <view class="period-chart">
+      <view class="selection-row" wx:if="{{selectedPoint || selectedSpan}}">
+        <button class="range-arrow" hover-class="none" aria-label="上一个图表数据" disabled="{{!canStepBack}}" data-direction="-1" bindtap="stepChart"><image class="previous-arrow" src="/images/ai-ui/chevron-right.png" /></button>
+        <view class="selection-copy"><text>{{scope === 'week' ? selectedPoint.label : selectedSpan.label}}</text><text>{{scope === 'week' ? (selectedPoint.rate !== null ? selectedPoint.rateLabel + ' 次/小时' : selectedPoint.valid ? '频率待同步' : '暂无有效记录') : selectedSpan.validCount + ' 晚有效记录'}}</text></view>
+        <button class="range-arrow" hover-class="none" aria-label="下一个图表数据" disabled="{{!canStepForward}}" data-direction="1" bindtap="stepChart"><image src="/images/ai-ui/chevron-right.png" /></button>
+        <button wx:if="{{scope === 'week'}}" class="drill-action" hover-class="none" disabled="{{!selectedPointValid}}" bindtap="openSelectedNight">查看整晚</button>
+        <button wx:else class="drill-action" hover-class="none" disabled="{{!selectedSpan.validCount}}" bindtap="openSelectedWeek">查看这段</button>
+      </view>
+      <block wx:if="{{scope === 'week'}}"><sleep-chart wx:if="{{!calendarOpen && !infoTitle}}" kind="week" chart="{{chart}}" bindselect="selectPoint" /><view wx:else style="height:550rpx" /></block>
+      <block wx:else><sleep-chart wx:if="{{!calendarOpen && !infoTitle}}" kind="month" chart="{{chart}}" bindselect="selectSpan" /><view wx:else style="height:580rpx" /></block>
+    </view>
+    <view class="week-coverage" wx:if="{{scope === 'month'}}"><text wx:for="{{spans}}" wx:key="start">{{item.rateCount}}/{{item.elapsedDays}}晚</text></view>
+    <text class="chart-unit">次/有效监测小时</text>
+    <view class="inline-state compact" wx:if="{{trend.rateCount < validCount}}">{{trend.rateCount}}晚可计算频率，其余时长或事件数待同步</view>
+    <view class="support-metrics"><view><text class="support-label">日均提醒</text><view><text class="support-value">{{trend.reminderLabel}}</text><text class="support-unit">次</text></view></view><view><text class="support-label">{{periodFeedbackUnavailable ? '晨间反馈待同步' : '反馈被弄醒'}}</text><view><text class="support-value">{{trend.feedbackCount ? trend.awakenedCount + '/' + trend.feedbackCount : '—'}}</text><text class="support-unit">晚</text></view></view></view>
+
+  </block>
+</view>
+<view class="dialog-backdrop" wx:if="{{calendarOpen}}" bindtap="cancelCalendar" catchtouchmove="noop">
+  <view class="calendar-sheet" catchtap="noop" role="dialog" aria-modal="true" aria-label="日历筛选">
+    <view class="sheet-handle" />
+    <view class="sheet-heading"><text>选择日期</text></view>
+    <scroll-view class="calendar-scroll" scroll-y>
+      <view class="calendar-scopes"><button hover-class="none" class="{{calendarScope === 'night' ? 'active' : ''}}" data-scope="night" bindtap="chooseCalendarScope" aria-pressed="{{calendarScope === 'night'}}">日</button><button hover-class="none" class="{{calendarScope === 'week' ? 'active' : ''}}" data-scope="week" bindtap="chooseCalendarScope" aria-pressed="{{calendarScope === 'week'}}">周</button><button hover-class="none" class="{{calendarScope === 'month' ? 'active' : ''}}" data-scope="month" bindtap="chooseCalendarScope" aria-pressed="{{calendarScope === 'month'}}">月</button></view>
+      <view class="calendar-month"><button hover-class="none" aria-label="上一月" data-direction="-1" bindtap="moveCalendarMonth"><image class="previous-arrow" src="/images/ai-ui/chevron-right.png" /></button><picker mode="date" fields="month" value="{{calendarMonth}}" end="{{maxDate}}" bindchange="chooseCalendarMonth"><view>{{calendarMonthLabel}}<image class="down-arrow" src="/images/ai-ui/chevron-right.png" /></view></picker><button hover-class="none" aria-label="下一月" data-direction="1" bindtap="moveCalendarMonth" disabled="{{!calendarNext}}"><image src="/images/ai-ui/chevron-right.png" /></button></view>
+      <view class="calendar-grid"><text class="weekday" wx:for="{{calendarWeekdays}}" wx:key="*this">{{item}}</text><button hover-class="none" wx:for="{{calendarDays}}" wx:key="date" class="calendar-day {{item.outside ? 'outside' : ''}} {{item.inRange ? 'in-range' : ''}} {{item.selected ? 'selected' : ''}}" data-date="{{item.date}}" bindtap="chooseCalendarDate" disabled="{{item.disabled}}" aria-label="{{item.label}} {{item.hasData ? '有记录' : ''}}"><text>{{item.day}}</text><view class="record-dot" wx:if="{{item.hasData}}" /><view class="today-dot" wx:if="{{item.today}}" /></button></view>
+      <view class="calendar-selection"><text wx:if="{{calendarScope !== 'month'}}">{{calendarPreview}}</text><button class="text-action" hover-class="none" bindtap="calendarCurrent">{{calendarScope === 'night' ? '今天' : calendarScope === 'week' ? '本周' : '本月'}}</button></view>
+    </scroll-view>
+    <view class="sheet-actions"><button class="secondary-button" hover-class="none" bindtap="cancelCalendar">取消</button><button class="primary-button" hover-class="none" bindtap="applyCalendar">查看数据</button></view>
+  </view>
+</view>
+<view class="dialog-backdrop info-backdrop" wx:if="{{infoTitle}}" bindtap="closeInfo" catchtouchmove="noop"><view class="info-sheet" catchtap="noop" role="dialog" aria-modal="true"><text class="info-title">{{infoTitle}}</text><text class="info-text">{{infoText}}</text><button class="primary-button" hover-class="none" bindtap="closeInfo">返回记录</button></view></view>

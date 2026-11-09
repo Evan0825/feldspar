@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./",
   "projectname": "snoozmate",
-  "description": "酣眠 SnoozMate — 鼾声智能守护系统",
+  "description": "月石 — 鼾声智能守护系统",
   "appid": "touristappid",
   "setting": {
     "urlCheck": false,

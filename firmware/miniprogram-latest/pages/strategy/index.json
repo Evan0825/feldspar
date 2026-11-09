@@ -1,0 +1,4 @@
+{
+  "navigationBarTitleText": "温和方案",
+  "usingComponents": { "state-banner": "/components/state-banner/index" }
+}

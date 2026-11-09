@@ -10,6 +10,11 @@ with tempfile.TemporaryDirectory(prefix='feldspar-host-') as folder:
                     '-fsanitize=undefined', '-I', str(root/'firmware/components/mic/include'),
                     str(root/'tests/mic_samples_test.c'), '-o', executable], check=True)
     subprocess.run([executable], check=True)
+    breath_test = str(Path(folder) / 'breath-pixel')
+    subprocess.run(['clang', '-std=c11', '-Wall', '-Wextra', '-Werror',
+                    '-fsanitize=undefined', '-I', str(root/'firmware/components/lighting'),
+                    str(root/'tests/breath_pixel_test.c'), '-o', breath_test], check=True)
+    subprocess.run([breath_test], check=True)
     guard_component = root/'firmware/components/actuation_guard'
     guard_sources = [str(guard_component/'actuation_guard.c'), str(guard_component/'button_gesture.c')]
     includes = [str(guard_component/'include')]
@@ -36,7 +41,7 @@ with tempfile.TemporaryDirectory(prefix='feldspar-host-') as folder:
     subprocess.run([frame_test], check=True)
     link_test = str(Path(folder)/'device-link')
     include_paths = [root/'tests/esp_stubs', root/'tests/vendor/cJSON',
-        *[root/f'firmware/components/{c}/include' for c in ('device_link', 'acoustic_features', 'haptic', 'actuation_guard', 'mqtt_mgr', 'device_control')]]
+        *[root/f'firmware/components/{c}/include' for c in ('device_link', 'acoustic_features', 'haptic', 'actuation_guard', 'mqtt_mgr', 'device_control', 'lighting', 'audio', 'sfx')]]
     cjson_object = str(Path(folder)/'cjson.o')
     # Keep upstream test-only cJSON intact; macOS deprecates its sprintf API.
     subprocess.run(['clang', '-std=c11', '-Wall', '-Wextra', '-Werror',
@@ -53,4 +58,11 @@ with tempfile.TemporaryDirectory(prefix='feldspar-host-') as folder:
         '-fsanitize=address,undefined', *[flag for p in sfx_includes for flag in ('-I', str(p))],
         '-DSFX_DIR="'+str(Path(folder)/'audio')+'"', str(root/'tests/sfx_stop_test.c'), '-lm', '-o', sfx_test], check=True)
     subprocess.run([sfx_test], check=True)
+    wifi_component = root/'firmware/components/wifi_mgr'
+    wifi_test = str(Path(folder)/'wifi-scan-reconnect')
+    subprocess.run(['clang', '-std=c11', '-Wall', '-Wextra', '-Werror',
+        '-fsanitize=address,undefined', '-I', str(root/'tests/esp_stubs'),
+        '-I', str(wifi_component/'include'), str(root/'tests/wifi_scan_reconnect_test.c'),
+        str(wifi_component/'wifi_mgr.c'), '-o', wifi_test], check=True)
+    subprocess.run([wifi_test], check=True)
 subprocess.run(['node', '--test', *map(str, sorted((root/'tests').glob('*.test.cjs')))], check=True)

@@ -1,0 +1,37 @@
+✔ integration: event details request the report night rather than unscoped events (5.084041ms)
+✔ integration: feedback entry scrolls to the questions and identifies its date (1.202125ms)
+✔ integration: unsaved feedback survives reload of the same night and resets for another (0.556791ms)
+✔ integration: AI source return requests the selected night and rejects a different night (3.99675ms)
+✔ integration: an undated or seven-night source never substitutes the latest night (1.122416ms)
+✖ integration: a weekly view never opens a single-night interpretation while AI refreshes (0.860584ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 5
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 55.059
+
+✖ failing tests:
+
+test at integration/feldspar-v1/tests/interaction-flow.test.cjs:42:1
+✖ integration: a weekly view never opens a single-night interpretation while AI refreshes (0.860584ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + {
+  +   interpretationId: 'single-current'
+  + }
+  - null
+
+      at TestContext.<anonymous> ([workspace]/integration/feldspar-v1/tests/interaction-flow.test.cjs:50:9)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { interpretationId: 'single-current' },
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

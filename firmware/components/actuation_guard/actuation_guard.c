@@ -22,7 +22,7 @@ bool ag_restore(ag_guard_t *g, const ag_checkpoint_t *checkpoint, uint64_t now) 
 }
 
 void ag_stop(ag_guard_t *g, uint64_t now, bool latch) {
-    if (g->active && g->source != AG_MANUAL)
+    if (g->active && (g->source == AG_CLOUD || g->source == AG_LOCAL))
         g->cooldown_until_ms = now + g->policy.cooldown_ms;
     g->active = false;
     g->percent = 0;
@@ -50,14 +50,21 @@ void ag_tick(ag_guard_t *g, uint64_t now) {
 ag_result_t ag_start(ag_guard_t *g, const ag_request_t *r, uint64_t now) {
     ag_tick(g, now);
     if (g->stop_latched) return AG_STOPPED;
-    if (!r || (unsigned)r->source > AG_LOCAL || !r->command_id || !r->command_id[0] ||
+    if (!r || (unsigned)r->source > AG_MANUAL_TEST || !r->command_id || !r->command_id[0] ||
         !memchr(r->command_id, 0, AG_ID_SIZE) || !r->percent ||
         r->percent > g->policy.max_percent || !r->duration_ms ||
         r->duration_ms > g->policy.max_duration_ms || UINT64_MAX - now < r->duration_ms) return AG_INVALID;
     if (r->expires_ms <= now) return AG_EXPIRED;
-    bool automatic = r->source != AG_MANUAL;
+    bool automatic = r->source == AG_CLOUD || r->source == AG_LOCAL;
     if (automatic && !strcmp(r->command_id, g->checkpoint.last_command)) return AG_DUPLICATE;
     if (g->active) return AG_BUSY;
+    if (r->source == AG_MANUAL_TEST) {
+        if (!r->authorized || !r->clock_valid || r->percent != 50 || r->duration_ms != 2000 ||
+            UINT64_MAX - now < 10000 || r->expires_ms - now > 10000) return AG_UNSAFE;
+        if (now < g->manual_test_until_ms) return AG_COOLDOWN;
+        /* Covers the full lifetime of a queued manual test, including MQTT replays. */
+        g->manual_test_until_ms = now + 10000;
+    }
     if (automatic) {
         if (!g->policy.automatic_enabled || !g->policy.profile_validated) return AG_DISABLED;
         if (!r->authorized || !r->hardware_ready || !r->evidence_fresh || !r->clock_valid) return AG_UNSAFE;

@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_rom_crc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -26,6 +27,9 @@ static const char *TAG = "sfx";
 #define SFX_HEADER_SIZE  16
 #define ADPCM_BLOCK_SIZE 256
 #define ADPCM_SAMPLES_PER_BLOCK  ((ADPCM_BLOCK_SIZE - 4) * 2 + 1)   /* 505 */
+#define SFX_DRAIN_POLL_MS 10
+/* 32 KiB PCM ring takes about 1 s at 16 kHz mono16, plus the I2S DMA tail. */
+#define SFX_DRAIN_TIMEOUT_MS 2000
 
 static const char HEADER_MAGIC[4] = {'H', 'M', 'F', 'X'};
 
@@ -55,12 +59,75 @@ static int  s_count = 0;
 static bool s_inited = false;
 
 static QueueHandle_t s_play_queue;          /* 播放请求（index） */
-typedef struct { int index; uint32_t epoch; } play_job_t;
+typedef struct { int index; uint32_t epoch; uint8_t minutes; bool manual; } play_job_t;
 static volatile uint32_t s_cancel_epoch;
 static volatile bool s_pause_flag = false;
 static volatile int  s_current = 0;         /* 正在播放的 index（0=无） */
 static volatile bool s_auto = false;
 static int  s_auto_next = 1;                /* 轮播游标 */
+
+/* The SFX task owns playback. The lock pairs its active index and deadline
+ * with BLE timer changes and stop requests from other tasks. */
+static portMUX_TYPE s_timer_lock = portMUX_INITIALIZER_UNLOCKED;
+static int64_t s_deadline_us;
+static uint8_t s_timer_minutes;
+static bool s_timed_manual_session;
+
+static bool valid_timer(uint8_t minutes)
+{
+    return minutes == 0 || minutes == 15 || minutes == 30 || minutes == 60;
+}
+
+static void set_timer_locked(uint8_t minutes, int64_t now)
+{
+    s_timer_minutes = minutes;
+    s_deadline_us = minutes ? now + minutes * 60000000LL : 0;
+}
+
+static void set_current(int index, uint8_t minutes, bool manual)
+{
+    int64_t now = esp_timer_get_time();
+    portENTER_CRITICAL(&s_timer_lock);
+    s_current = index;
+    s_timed_manual_session = manual;
+    set_timer_locked(minutes, now);
+    portEXIT_CRITICAL(&s_timer_lock);
+}
+
+static int64_t timer_deadline(void)
+{
+    portENTER_CRITICAL(&s_timer_lock);
+    int64_t deadline = s_deadline_us;
+    portEXIT_CRITICAL(&s_timer_lock);
+    return deadline;
+}
+
+static bool timer_expired(void)
+{
+    int64_t deadline = timer_deadline();
+    return deadline && esp_timer_get_time() >= deadline;
+}
+
+uint16_t sfx_timer_state(uint8_t *minutes)
+{
+    portENTER_CRITICAL(&s_timer_lock);
+    int64_t deadline = s_deadline_us;
+    *minutes = s_timer_minutes;
+    portEXIT_CRITICAL(&s_timer_lock);
+    int64_t remaining = deadline ? deadline - esp_timer_get_time() : 0;
+    return remaining > 0 ? (uint16_t)((remaining + 999999) / 1000000) : 0;
+}
+
+esp_err_t sfx_set_timer(uint8_t minutes)
+{
+    if (!valid_timer(minutes)) return ESP_ERR_INVALID_ARG;
+    int64_t now = esp_timer_get_time();
+    portENTER_CRITICAL(&s_timer_lock);
+    bool active = s_timed_manual_session && s_current != 0 && (!s_deadline_us || now < s_deadline_us);
+    if (active) set_timer_locked(minutes, now);
+    portEXIT_CRITICAL(&s_timer_lock);
+    return active ? ESP_OK : ESP_ERR_INVALID_STATE;
+}
 
 static sfx_progress_cb_t s_progress_cb = NULL;
 static sfx_event_cb_t    s_event_cb = NULL;
@@ -190,7 +257,7 @@ static void feed_pcm(const int16_t *pcm, size_t samples, uint32_t epoch)
 {
     const uint8_t *p = (const uint8_t *)pcm;
     size_t remain = samples * 2;
-    while (remain > 0 && epoch == s_cancel_epoch) {
+    while (remain > 0 && epoch == s_cancel_epoch && !timer_expired()) {
         if (s_pause_flag) { vTaskDelay(pdMS_TO_TICKS(50)); continue; }
         esp_err_t err = audio_feed(p, remain);
         if (err == ESP_ERR_NO_MEM) {
@@ -205,7 +272,7 @@ static void feed_pcm(const int16_t *pcm, size_t samples, uint32_t epoch)
 }
 
 /* 读取并解码整个文件送入音频组件；返回 ESP_OK 表示播完 */
-static esp_err_t play_file(int index, uint32_t epoch)
+static esp_err_t play_file(int index, uint32_t epoch, uint8_t minutes, bool manual)
 {
     if (epoch != s_cancel_epoch) return ESP_ERR_INVALID_STATE;
     char name[SFX_NAME_MAX + 1];
@@ -230,12 +297,12 @@ static esp_err_t play_file(int index, uint32_t epoch)
 
     esp_err_t ret = ESP_OK;
     if (epoch != s_cancel_epoch) { fclose(f); return ESP_ERR_INVALID_STATE; }
-    s_current = index;
+    set_current(index, minutes, manual);
     s_pause_flag = false;
     audio_flush();     /* 丢弃被打断歌曲可能残留的缓冲，确保新曲从静音起点开始 */
     ret = audio_start();
     if (ret != ESP_OK || epoch != s_cancel_epoch) {
-        s_current = 0;
+        set_current(0, 0, false);
         audio_stop();
         fclose(f);
         return ret != ESP_OK ? ret : ESP_ERR_INVALID_STATE;
@@ -244,47 +311,68 @@ static esp_err_t play_file(int index, uint32_t epoch)
     snprintf(ev, sizeof(ev), "SFXSTART,%d", index);
     emit_event(ev);
 
-    if (fmt == SFX_FMT_IMA_ADPCM) {
-        uint8_t blk[ADPCM_BLOCK_SIZE];
-        int16_t pcm[ADPCM_SAMPLES_PER_BLOCK];
+    /* Timed manual playback repeats this track until its device deadline. */
+    for (;;) {
         uint32_t done = 0;
-        while (done < size && s_current == index && epoch == s_cancel_epoch) {
-            if (s_pause_flag) { vTaskDelay(pdMS_TO_TICKS(50)); continue; }
-            size_t want = (size - done < sizeof(blk)) ? (size - done) : sizeof(blk);
-            size_t got = fread(blk, 1, want, f);
-            if (got == 0) break;
-            if (got < sizeof(blk)) memset(blk + got, 0, sizeof(blk) - got);
-            size_t n = adpcm_decode_block(blk, pcm);
-            feed_pcm(pcm, n, epoch);
-            done += got;
+        if (fmt == SFX_FMT_IMA_ADPCM) {
+            uint8_t blk[ADPCM_BLOCK_SIZE];
+            int16_t pcm[ADPCM_SAMPLES_PER_BLOCK];
+            while (done < size && s_current == index && epoch == s_cancel_epoch && !timer_expired()) {
+                if (s_pause_flag) { vTaskDelay(pdMS_TO_TICKS(50)); continue; }
+                size_t want = (size - done < sizeof(blk)) ? (size - done) : sizeof(blk);
+                size_t got = fread(blk, 1, want, f);
+                if (got == 0) break;
+                if (got < sizeof(blk)) memset(blk + got, 0, sizeof(blk) - got);
+                size_t n = adpcm_decode_block(blk, pcm);
+                feed_pcm(pcm, n, epoch);
+                done += got;
+            }
+        } else {
+            uint8_t buf[1024];
+            while (done < size && s_current == index && epoch == s_cancel_epoch && !timer_expired()) {
+                if (s_pause_flag) { vTaskDelay(pdMS_TO_TICKS(50)); continue; }
+                size_t want = (size - done < sizeof(buf)) ? (size - done) : sizeof(buf);
+                want &= ~1UL;                     /* 16bit 对齐 */
+                size_t got = fread(buf, 1, want, f);
+                if (got == 0) break;
+                feed_pcm((const int16_t *)buf, got / 2, epoch);
+                done += got;
+            }
         }
-    } else {
-        uint8_t buf[1024];
-        uint32_t done = 0;
-        while (done < size && s_current == index && epoch == s_cancel_epoch) {
-            if (s_pause_flag) { vTaskDelay(pdMS_TO_TICKS(50)); continue; }
-            size_t want = (size - done < sizeof(buf)) ? (size - done) : sizeof(buf);
-            want &= ~1UL;                     /* 16bit 对齐 */
-            size_t got = fread(buf, 1, want, f);
-            if (got == 0) break;
-            feed_pcm((const int16_t *)buf, got / 2, epoch);
-            done += got;
+        if (done != size || !timer_deadline() || timer_expired() ||
+            s_current != index || epoch != s_cancel_epoch) break;
+        if (fseek(f, SFX_HEADER_SIZE, SEEK_SET) != 0) {
+            ret = ESP_FAIL;
+            break;
         }
     }
 
     fclose(f);
-    if (s_current == index) {
+    unsigned polls_left = SFX_DRAIN_TIMEOUT_MS / SFX_DRAIN_POLL_MS;
+    while (s_current == index && epoch == s_cancel_epoch && !timer_expired() && audio_has_pending()) {
+        if (!s_pause_flag && --polls_left == 0) {
+            ret = ESP_ERR_TIMEOUT;
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(SFX_DRAIN_POLL_MS));
+    }
+    if (s_current != index || epoch != s_cancel_epoch) return ESP_ERR_INVALID_STATE;
+
+    set_current(0, 0, false);
+    audio_stop();
+    if (epoch != s_cancel_epoch) return ESP_ERR_INVALID_STATE;
+    if (ret != ESP_OK) {
+        emit_event("SFXERR,drain");
+    } else {
         snprintf(ev, sizeof(ev), "SFXDONE,%d", index);
         emit_event(ev);
-        s_current = 0;
-        audio_stop();
     }
     return ret;
 }
 
 static esp_err_t stop_current(void)
 {
-    s_current = 0;
+    set_current(0, 0, false);
     s_pause_flag = false;
     return audio_stop();
 }
@@ -304,16 +392,17 @@ static void play_task(void *arg)
                 index = s_auto_next++;
             }
             if (s_current != 0) stop_current();
-            play_file(index, job.epoch);
+            play_file(index, job.epoch, job.minutes, job.manual);
         }
     }
 }
 
-esp_err_t sfx_play(int index)
+static esp_err_t queue_play(int index, uint8_t minutes, bool manual)
 {
+    if (!valid_timer(minutes)) return ESP_ERR_INVALID_ARG;
     if (!s_inited) return ESP_ERR_INVALID_STATE;
     if (index > s_count) return ESP_ERR_NOT_FOUND;
-    play_job_t job = {.index=index, .epoch=s_cancel_epoch};
+    play_job_t job = {.index=index, .epoch=s_cancel_epoch, .minutes=minutes, .manual=manual};
     if (xQueueSend(s_play_queue, &job, 0) != pdTRUE) return ESP_ERR_NO_MEM;
     /* 无缝切换：新曲目入队成功后立即打断当前播放（含暂停态）。
      * 播放任务中的 play_file 循环检测到 s_current 变化后在数十毫秒内退出，
@@ -321,6 +410,16 @@ esp_err_t sfx_play(int index)
      * 若队列满则保持现状不打断，避免"停了旧歌却播不了新歌"。 */
     if (s_current != 0) stop_current();
     return ESP_OK;
+}
+
+esp_err_t sfx_play(int index)
+{
+    return queue_play(index, 0, false);
+}
+
+esp_err_t sfx_play_timed(int index, uint8_t minutes)
+{
+    return queue_play(index, minutes, true);
 }
 
 esp_err_t sfx_pause(void)

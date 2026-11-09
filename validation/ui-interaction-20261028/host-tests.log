@@ -1,0 +1,56 @@
+Microphone conversion boundaries passed (host only).
+Actuation guard and short/long button checks passed (host only).
+ESP adapter timer, stop, persistence and failure checks passed (stub peripherals).
+Versioned acoustic feature quality and context checks passed (host only).
+MQTT command fragmentation, topic and retained-message checks passed (host only).
+Device-link JSON, command/ACK, clock and opt-in checks passed (stub transport).
+SFX stop cancels queued/dequeued jobs and preserves explicit switching (host files only).
+✔ current firmware scans over FF01 0x44 without FF05; comma/UTF8 SSID and dedup (183.502417ms)
+✔ empty scan succeeds and scan failure is reported (364.690625ms)
+✔ future FF05 protocol retains 0x40/base64 scan behavior (1.219542ms)
+✔ current firmware WiFi status uses query 0x42, never forget 0x43 (183.170833ms)
+✔ only undecodable AP records with nonempty scan count fail instead of showing empty success (182.359375ms)
+✔ stop page waits for confirmed service result and never toasts success on failure (4.712ms)
+✔ sound page keeps last known output until readback and retains sync-pending result (2.470292ms)
+✔ BLE safety controls remain reachable during cloud network failure (6.047042ms)
+✔ stale sensor data does not show ready or an active local loop (2.609125ms)
+✔ cloud authorization failures are not converted to successful device status (0.621334ms)
+✔ local stop latch takes precedence over a fresh cloud snapshot (0.281958ms)
+✔ offline controls show driver readback and keep confirmed changes pending cloud sync (1.691875ms)
+✔ cloud preferences do not bypass authorization via BLE (1.462ms)
+✔ remote global stop needs explicit applied readback; queued alone is not confirmation (0.951208ms)
+✔ remote unsupported settings report an explicit limitation (2.698542ms)
+✔ integration: event details request the report night rather than unscoped events (7.979834ms)
+✔ integration: feedback entry scrolls to the questions and identifies its date (5.163875ms)
+✔ integration: unsaved feedback survives reload of the same night and resets for another (0.523667ms)
+✔ integration: AI source return requests the selected night and rejects a different night (4.8155ms)
+✔ integration: an undated or seven-night source never substitutes the latest night (2.916042ms)
+✔ integration: a weekly view never opens a single-night interpretation while AI refreshes (0.934ms)
+✔ a failed earlier navigation cannot clear a later selected source (0.066ms)
+✔ light command respects the control range and requires matching IO readback (1057.099375ms)
+✔ sound volume needs readback; unsupported timer or missing scene is not success (1054.333125ms)
+✔ active app command numbers match imported firmware header (3.850709ms)
+✔ WiFi config lengths are UTF8 bytes, with bounded SSID/password (1.145875ms)
+✔ partial report does not invent posture, response, quality, duration or assessment (8.10425ms)
+✔ explicit zero observations remain zero and empty reports remain empty (0.977375ms)
+✔ AI interpretation does not invent a period, quality, metrics or generation time (0.226167ms)
+✔ AI interpretation keeps explicitly provided dates and quality (0.1555ms)
+✔ safety requests ignore stale tokens and confirm actual readback (182.680416ms)
+✔ resume needs a cleared latch and stopping needs an inactive latched readback (362.525833ms)
+✔ safety readback requires matching request and valid driver state (0.503916ms)
+✔ IO readback keeps light, volume and play state distinct (0.45325ms)
+✔ reminder preferences exclude only sound and light; vibration is never editable (0.900833ms)
+✔ new profiles allow both optional reminders while explicit exclusions survive round trips (2.177292ms)
+✔ seven days never auto-activate or advance a personal strategy (0.592458ms)
+✔ progress counts distinct valid dates and never invents offline operation (0.07775ms)
+✔ stale runtime cannot imply observation and unconfirmed plans cannot advance the stage (0.074875ms)
+✔ preferences edit skips onboarding, round-trips fields and never changes device settings (0.6245ms)
+✔ preference load/save failure cannot navigate away or overwrite a profile with defaults (0.883167ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5209.485042

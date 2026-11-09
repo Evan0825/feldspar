@@ -1,70 +1,64 @@
-<view class="page chat-page">
-  <block wx:if="{{mode === 'conversation'}}">
-    <view class="chat-toolbar">
-      <text class="context-pill" wx:if="{{contextTitle}}">正在基于：{{contextTitle}}</text>
-      <button hover-class="none" class="history-link" bindtap="openHistory">聊天记录</button>
-    </view>
-
-    <view class="state-card" wx:if="{{loading}}">正在绑定本次解读</view>
-    <state-banner wx:if="{{!loading && error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="false" />
-
-    <scroll-view class="conversation-scroll" scroll-y="true" scroll-into-view="{{scrollTarget}}" wx:if="{{!loading && interpretationId}}">
-      <view class="assistant-intro" wx:if="{{!messages.length}}">
-        <text class="message-role">好眠 AI · 本次解读</text>
-        <text class="context-conclusion">{{contextConclusion}}</text>
-        <text class="context-summary">{{contextSummary}}</text>
-        <text class="context-prompt">你可以继续追问这份记录，我会只基于结构化数据回答。</text>
+<view class="chat-page" style="padding-bottom: {{keyboardHeight}}px;">
+  <view class="chat-toolbar">
+    <button hover-class="none" class="ai-home-entry" bindtap="goAiHome">返回</button>
+    <view class="toolbar-actions" wx:if="{{!consentRequired}}"><button hover-class="none" bindtap="openHistory" disabled="{{sending}}">对话记录</button><button hover-class="none" wx:if="{{!readOnly}}" class="new-chat" aria-label="新建对话" bindtap="startNewConversation" disabled="{{sending}}"><image src="/images/ai-ui/new-chat.png" /></button></view>
+  </view>
+  <view class="context-source" wx:if="{{!consentRequired && !loading}}"><image src="/images/ai-ui/calendar.png" /><text>{{contextTitle || '问 AI'}}</text><button hover-class="none" wx:if="{{contextSource}}" bindtap="openSourceRecord">查看记录</button></view>
+  <view class="state-card" wx:if="{{consentRequired}}"><text class="state-title">允许 AI 读取睡眠资料后即可提问。</text><button hover-class="none" class="primary-button" bindtap="openAuthorization">开启授权</button><button hover-class="none" class="secondary-button" bindtap="openHistory">查看已存记录</button></view>
+  <view class="state-card" wx:elif="{{loading}}">正在打开对话…</view>
+  <view class="state-card" wx:elif="{{error}}"><text class="state-title">{{error.title}}</text><text>{{error.detail}}</text><button hover-class="none" class="primary-button" wx:if="{{error.retryable}}" bindtap="retryLoad">重新加载</button><block wx:else><button hover-class="none" class="secondary-button" bindtap="openHistory">返回记录</button><button hover-class="none" class="primary-button" bindtap="newGeneralConversation">开始新对话</button></block></view>
+  <scroll-view wx:if="{{!loading && !consentRequired && !error}}" class="conversation-scroll" scroll-y="true" scroll-into-view="{{scrollTarget}}" scroll-with-animation="false" enhanced="true" show-scrollbar="false">
+    <view class="conversation-content">
+      <view class="readonly-notice" wx:if="{{readOnly}}"><text>AI 授权已关闭，仅查看{{isHistorySession ? '已存对话' : '已存解读'}}</text><button hover-class="none" bindtap="openHistory">返回记录</button></view>
+      <view class="context-details" wx:if="{{interpretationId}}">
+        <text class="source-caption">{{contextSourceLabel}} · 数据质量：{{contextQuality || '原始依据暂不可用'}}</text>
+        <text class="source-caption" wx:if="{{contextEvidenceError}}">{{contextEvidenceError}}</text>
+        <button hover-class="none" class="evidence-link" wx:if="{{contextEvidence.length}}" bindtap="toggleContextEvidence">{{contextEvidenceExpanded ? '收起记录依据' : '查看记录依据'}}<image src="/images/ai-ui/chevron-right.png" /></button>
+        <view class="answer-sections" wx:if="{{contextEvidenceExpanded}}"><view wx:for="{{contextEvidence}}" wx:key="id"><text>{{item.metric}} · {{item.value}}{{item.unit}}</text><text>{{item.explanation}}</text><text>{{item.window}}</text></view></view>
       </view>
-      <view class="carried-memory" wx:if="{{!messages.length && carriedMemory}}">
-        <text>已带上关键背景</text>
-        <text>上一段对话已整理，今晚方案与已确认偏好会继续保留。</text>
+      <text wx:if="{{isHistorySession && sessionTitle}}" class="session-heading">{{sessionTitle}}</text>
+      <view class="assistant-intro" wx:if="{{!messages.length}}"><view class="assistant-role"><image src="/images/tab-ai-active.png" /><text>AI</text></view><text class="context-conclusion">{{contextConclusion}}</text><text class="context-summary">{{contextSummary}}</text></view>
+      <view class="carried-memory" wx:if="{{!messages.length && carriedMemory}}"><image src="/images/ai-ui/brain.png" /><text>已带上对话要点（本机整理）</text></view>
+      <view class="quick-row" wx:if="{{!messages.length && !readOnly}}"><button hover-class="none" wx:for="{{quickQuestions}}" wx:key="*this" data-question="{{item}}" bindtap="useQuickQuestion">{{item}}<image src="/images/ai-ui/chevron-right.png" /></button></view>
+      <view class="memory-review" wx:if="{{collapsedMessageCount || carriedMemory || memoryIncomplete}}">
+        <text wx:if="{{memoryIncomplete}}">摘录不完整，原对话仍保留。</text>
+        <button hover-class="none" class="evidence-link" bindtap="toggleMemory">{{memoryExpanded ? '收起对话要点' : '检查对话要点（本机摘录）'}}</button>
+        <text class="memory-text" wx:if="{{memoryExpanded}}" user-select="true">{{conversationSummary || carriedMemory}}</text>
+        <button hover-class="none" class="evidence-link" wx:if="{{previousSessionId}}" bindtap="openPreviousConversation">查看上一段原会话</button>
       </view>
-      <view class="quick-row" wx:if="{{!messages.length}}"><button hover-class="none" wx:for="{{quickQuestions}}" wx:key="*this" class="quick-chip" data-question="{{item}}" bindtap="useQuickQuestion">{{item}}</button></view>
-
-      <button hover-class="none" class="memory-fold" wx:if="{{collapsedMessageCount}}" bindtap="toggleOlderMessages">
-        <text>{{olderMessagesExpanded ? '收起较早对话' : '已整理 ' + collapsedMessageCount + ' 条较早对话'}}</text>
-        <text>{{olderMessagesExpanded ? '保留最近内容' : '关键背景将继续保留 · 展开查看'}}</text>
-      </button>
-
-      <view id="{{item.messageId}}" class="message {{item.role}} {{item.answerKind}}" wx:for="{{visibleMessages}}" wx:key="messageId">
-        <text class="message-role">{{item.role === 'user' ? '我' : ('好眠 AI · ' + (item.source === 'llm' ? '云端模型' : '本地规则'))}}</text>
-        <text class="message-text">{{item.text}}</text>
-        <view class="answer-sections" wx:if="{{item.role === 'assistant' && item.sections && (item.sections.canExplain || item.sections.cannotDetermine || item.sections.nextStep)}}">
-          <view wx:if="{{item.sections.canExplain}}"><text>可以说明</text><text>{{item.sections.canExplain}}</text></view>
-          <view wx:if="{{item.sections.cannotDetermine}}"><text>不能判断</text><text>{{item.sections.cannotDetermine}}</text></view>
-          <view wx:if="{{item.sections.nextStep}}"><text>下一步</text><text>{{item.sections.nextStep}}</text></view>
+      <button hover-class="none" class="memory-fold" wx:if="{{collapsedMessageCount}}" bindtap="toggleOlderMessages"><image src="/images/ai-ui/brain.png" /><text>{{olderMessagesExpanded ? '收起较早对话' : '已折叠 ' + collapsedMessageCount + ' 条较早对话，展开全文'}}</text></button>
+      <block wx:for="{{visibleMessages}}" wx:key="messageId">
+        <view class="message-date" wx:if="{{item.dateLabel}}"><text>{{item.dateLabel}}</text></view>
+        <view id="{{item.messageId}}" class="message {{item.role}} {{item.answerKind}}">
+          <view class="assistant-role" wx:if="{{item.role === 'assistant'}}"><image src="/images/tab-ai-active.png" /><text>AI</text><text class="source-caption" wx:if="{{item.sourceLabel}}">{{item.sourceLabel}}</text></view>
+          <view class="message-bubble">
+            <text class="message-text" user-select="true">{{item.text}}</text>
+            <text class="source-caption" wx:if="{{item.status === 'discarded'}}">已放弃回答 · 原文保留</text>
+            <button hover-class="none" class="evidence-link" wx:if="{{item.role === 'assistant' && (item.evidence.length || item.evidenceUnavailable || item.sections)}}" data-id="{{item.messageId}}" bindtap="toggleEvidence">{{expandedMessageId === item.messageId ? '收起判断依据' : '查看判断依据'}}<image src="/images/ai-ui/chevron-right.png" /></button>
+            <view class="answer-sections" wx:if="{{item.role === 'assistant' && expandedMessageId === item.messageId}}"><view wx:for="{{item.evidence}}" wx:for-item="evidence" wx:key="id"><text>{{evidence.metric}} · {{evidence.value}}{{evidence.unit}}</text><text>{{evidence.explanation}}</text><text>{{evidence.window}}</text></view><text class="source-caption" wx:if="{{item.evidenceUnavailable}}">部分依据暂不可用。</text></view>
+            <view class="answer-sections" wx:if="{{item.role === 'assistant' && item.sections && (expandedMessageId === item.messageId || item.answerKind === 'urgent')}}"><view><text>可说明</text><text>{{item.sections.canExplain}}</text></view><view><text>不能判断</text><text>{{item.sections.cannotDetermine}}</text></view><view><text>建议</text><text>{{item.sections.nextStep}}</text></view></view>
+            <view class="plan-action" wx:if="{{item.hasPlan}}"><text>今晚温和方案</text><button hover-class="none" bindtap="openPlan">查看建议<image src="/images/ai-ui/arrow-up.png" /></button></view>
+          </view>
+          <view class="message-actions" wx:if="{{item.role === 'assistant'}}"><button hover-class="none" data-id="{{item.messageId}}" bindtap="copyAnswer" aria-label="复制回答"><image src="/images/ai-ui/copy.png" /></button></view>
         </view>
-        <button hover-class="none" wx:if="{{item.role === 'assistant' && item.answerKind === 'trend'}}" class="inline-action" bindtap="openPlan">查看今晚温和方案</button>
-      </view>
-      <view class="answering" wx:if="{{sending}}">好眠 AI 正在回答…</view>
-      <view class="context-limit-card" wx:if="{{contextLimitReached}}">
-        <text>本次对话已较长</text>
-        <text>为保持解读准确，请整理后新建对话。已确认的关键背景会继续保留。</text>
-        <view><button hover-class="none" bindtap="continueInNewConversation">整理后新建对话</button><button hover-class="none" bindtap="openHistory">查看聊天记录</button></view>
-      </view>
-      <view id="chat-end"></view>
-    </scroll-view>
+      </block>
+      <view class="answering" wx:if="{{sending}}"><image src="/images/tab-ai-active.png" /><text>正在整理回答…</text></view>
+      <view class="inline-error" wx:if="{{sendError && !readOnly}}"><text>{{sendError.title}}</text><text>{{sendError.detail}}</text><button hover-class="none" bindtap="retryAnswer" disabled="{{sending}}">重新获取回答</button><button hover-class="none" bindtap="editFailedQuestion">编辑后重试</button><button hover-class="none" bindtap="discardFailedQuestion">放弃回答</button></view>
+      <button hover-class="none" class="latest-context" wx:if="{{isHistorySession && messages.length && !sending && !readOnly}}" bindtap="useLatestContext">结合最新记录新建对话<image src="/images/ai-ui/chevron-right.png" /></button>
+      <view class="context-limit-card" wx:if="{{contextLimitReached && !readOnly}}"><text>对话较长</text><text>新对话携带本机摘录，原对话保留。</text><button hover-class="none" bindtap="continueInNewConversation" disabled="{{sending}}">带上对话要点（本机整理）</button></view>
+      <view class="save-state" wx:if="{{saveStatus && !saveError}}"><image src="/images/ai-ui/check.png" /><text>{{saveStatus}}</text></view>
+      <view class="inline-error" wx:if="{{saveError}}"><text>{{saveError.title}}</text><text>{{saveError.detail}}</text><button hover-class="none" bindtap="retrySave">重试保存</button></view>
+      <view class="inline-error" wx:if="{{draftError && !saveError}}"><text>{{draftError.title}}</text><text>{{draftError.detail}}</text><button hover-class="none" bindtap="retrySave">重试保存草稿</button></view>
+      <view class="inline-error" wx:if="{{actionError}}"><text>{{actionError.title}}</text><text>{{actionError.detail}}</text><button hover-class="none" bindtap="retryAction">重试</button></view>
 
+      <view id="chat-end" class="chat-end"></view>
+    </view>
+  </scroll-view>
+  <view class="composer-area {{keyboardHeight ? 'keyboard-open' : ''}}" wx:if="{{!loading && !consentRequired && !error && !readOnly}}">
     <view class="composer">
-      <input value="{{inputText}}" placeholder="{{contextLimitReached ? '请新建对话继续' : '继续问这份记录…'}}" maxlength="160" disabled="{{sending || contextLimitReached}}" bindinput="onInput" bindconfirm="sendMessage" />
-      <button hover-class="none" disabled="{{sending || !inputText || contextLimitReached}}" bindtap="sendMessage">{{sending ? '回答中' : '发送'}}</button>
+      <textarea value="{{inputText}}" focus="{{inputFocused}}" placeholder="{{contextLimitReached ? '新建对话后继续' : isHistorySession ? '继续这个话题…' : '输入问题…'}}" maxlength="2000" auto-height="true" adjust-position="false" cursor-spacing="16" show-confirm-bar="false" confirm-type="send" bindinput="onInput" bindblur="onInputBlur" bindconfirm="sendMessage" bindkeyboardheightchange="onKeyboardHeightChange" />
+      <button hover-class="none" class="send-button" disabled="{{sending || !inputText || contextLimitReached || sendError}}" bindtap="sendMessage" aria-label="发送问题"><image src="/images/ai-ui/arrow-up.png" /></button>
     </view>
-  </block>
-
-  <block wx:if="{{mode === 'history'}}">
-    <view class="history-toolbar">
-      <button hover-class="none" bindtap="closeHistory">‹ 返回对话</button>
-      <button hover-class="none" bindtap="startNewConversation">新对话</button>
-    </view>
-    <view class="state-card" wx:if="{{historyLoading}}">正在读取聊天记录</view>
-    <state-banner wx:if="{{!historyLoading && error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="false" />
-    <view class="history-empty" wx:if="{{!historyLoading && !error && !sessions.length}}">还没有聊天记录</view>
-    <view class="session-list" wx:if="{{!historyLoading && !error && sessions.length}}">
-      <view class="session-card" wx:for="{{sessions}}" wx:key="sessionId" data-id="{{item.sessionId}}" bindtap="openSession">
-        <view><text class="session-title">{{item.title}}</text><text class="session-preview">{{item.preview}}</text></view>
-        <view><text class="session-time">{{item.updatedAt}}</text><text class="session-arrow">›</text></view>
-      </view>
-    </view>
-    <text class="history-boundary">仅保存对话文字与结构化依据，不保存连续原始录音。</text>
-  </block>
+    <text class="chat-boundary" wx:if="{{!keyboardHeight}}">用于趋势观察，不替代医疗检查</text>
+  </view>
 </view>

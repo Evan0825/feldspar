@@ -1,0 +1,14 @@
+<view class="page memory-page">
+  <text class="memory-intro">仅用于对话，不修改设备。</text>
+  <view class="memory-loading" wx:if="{{loading}}">正在读取</view>
+  <state-banner wx:if="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" bindretry="load" />
+  <view wx:if="{{!loading && consentRequired}}"><text class="memory-intro">AI 授权已关闭。已有记忆不再用于生成，你仍可移除。</text></view>
+  <block wx:if="{{!loading && memory}}">
+    <view class="memory-card">
+      <view class="preference-row"><view><text>偏好温和提醒</text></view><switch color="#F9C747" aria-label="偏好温和提醒" checked="{{gentleReminder}}" disabled="{{saving || (consentRequired && !gentleReminder)}}" bindchange="toggleGentle" /></view>
+      <view class="preference-row"><view><text>参考同睡情况</text></view><switch color="#F9C747" aria-label="参考同睡情况" checked="{{includeSleepMode}}" disabled="{{saving || (consentRequired && !includeSleepMode)}}" bindchange="toggleSleepMemory" /></view>
+    </view>
+    <button hover-class="none" wx:if="{{!consentRequired}}" class="memory-menu" disabled="{{saving}}" bindtap="openSleepMode"><text>对话中的同睡情况</text><text>›</text></button>
+    <button hover-class="none" class="memory-menu" bindtap="openProfile"><text>AI 与数据授权</text><text>›</text></button>
+  </block>
+</view>

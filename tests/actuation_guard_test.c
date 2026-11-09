@@ -97,6 +97,17 @@ int main(void) {
     assert(ag_resume(&rebooted) == AG_STORAGE && rebooted.stop_latched);
     save_ok=true;
 
+    policy.max_percent=100; policy.max_duration_ms=10000; policy.automatic_enabled=false;
+    ag_init(&guard, policy, save_checkpoint, NULL);
+    request=(ag_request_t){.source=AG_MANUAL_TEST,.command_id="trial",.percent=50,
+        .duration_ms=2000,.expires_ms=6000,.authorized=true,.clock_valid=true};
+    assert(ag_start(&guard,&request,10)==AG_OK);
+    assert(ag_adjust_manual(&guard,80)==AG_INVALID);
+    ag_tick(&guard,2010);
+    assert(!guard.active && !guard.stop_latched && guard.percent==0);
+    assert(ag_start(&guard,&request,2011)==AG_COOLDOWN);
+    assert(ag_start(&guard,&request,11000)==AG_EXPIRED);
+
     button_gesture_t button = {0};
     assert(button_gesture_update(&button, true, 100) == BUTTON_NONE);
     assert(button_gesture_update(&button, false, 110) == BUTTON_NONE); /* bounce */

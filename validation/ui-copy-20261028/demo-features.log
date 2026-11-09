@@ -1,0 +1,24 @@
+{
+  "source": "synthetic_fixture",
+  "valid_30_windows": {
+    "status": "observed",
+    "quality": "good",
+    "reason": "",
+    "score": 0.9650000000000001,
+    "rating": "S3",
+    "valid_windows": 30,
+    "rule_version": "feature-rule-v1-unvalidated",
+    "automatic_allowed": false
+  },
+  "self_noise_window": {
+    "status": "observed",
+    "quality": "unknown",
+    "reason": "quality_unknown",
+    "score": null,
+    "rating": "unknown",
+    "valid_windows": 0,
+    "rule_version": "feature-rule-v1-unvalidated",
+    "automatic_allowed": false
+  },
+  "limitation": "Engineering rules only; not clinical or classifier validation."
+}

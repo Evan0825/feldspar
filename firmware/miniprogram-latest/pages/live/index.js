@@ -23,6 +23,7 @@ Page({
     canStop: false,
     stopping: false,
     demoMode: services.serviceMode === 'mock',
+    showDemoPanel: false,
     settings: { maxVibrationLevel: 3 },
     loopSteps: ['感知', '判断', '提醒', '验证', '停止'],
     demoPhases: [
@@ -52,7 +53,7 @@ Page({
       this.setData({ settings })
       this.applySnapshot(snapshot)
     } catch (error) {
-      this.setData({ error: toUserError(error, '实时守护') })
+      this.setData({ error: toUserError(error, '实时状态') })
     } finally {
       this.setData({ loading: false })
     }
@@ -73,7 +74,7 @@ Page({
     try {
       this.applySnapshot(await services.guardian.getSnapshot())
     } catch (error) {
-      this.setData({ error: toUserError(error, '实时守护') })
+      this.setData({ error: toUserError(error, '实时状态') })
     }
   },
   applySnapshot(snapshot) {
@@ -118,6 +119,7 @@ Page({
       this.setData({ loading: false })
     }
   },
+  toggleDemoPanel() { this.setData({ showDemoPanel: !this.data.showDemoPanel }) },
   openTonight() { wx.navigateTo({ url: '/pages/tonight/index' }) },
   backTonight() { wx.switchTab({ url: '/pages/home/index' }) },
 })

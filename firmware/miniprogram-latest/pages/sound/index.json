@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "疗愈声音",
+  "navigationBarTitleText": "声音",
   "usingComponents": {
     "state-banner": "/components/state-banner/index"
   }

@@ -1,0 +1,5 @@
+{
+  "navigationBarTitleText": "AI 记录",
+  "enablePullDownRefresh": true,
+  "usingComponents": { "state-banner": "/components/state-banner/index" }
+}
