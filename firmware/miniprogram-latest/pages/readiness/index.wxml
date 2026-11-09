@@ -4,9 +4,9 @@
   <state-banner wx:if="{{error}}" tone="danger" title="{{error.title}}" detail="{{errorMessage}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="handleServiceAction" bindaction="handleServiceAction" />
 
   <view class="card confirmation-card" wx:if="{{!readiness.ready}}">
-    <view class="confirmation-row" wx:for="{{readiness.checks}}" wx:key="id"><text class="confirmation-mark">{{item.ready ? '✓' : '!'}}</text><view><text class="confirmation-title">{{item.label}}</text><text class="confirmation-copy">{{item.ready ? '已确认' : item.detail}}</text></view></view>
+    <view class="confirmation-row" wx:for="{{readiness.checks}}" wx:key="id"><text class="confirmation-mark {{item.ready ? '' : 'warning'}}">{{item.ready ? '✓' : '!'}}</text><view><text class="confirmation-title">{{item.label}}</text><text class="confirmation-copy">{{item.ready ? '已确认' : item.detail}}</text></view></view>
     <button hover-class="none" class="primary-button" bindtap="retry">重新检查</button>
-    <button hover-class="none" class="text-action" bindtap="adjustPlacement">返回放置校准</button>
+    <button hover-class="none" class="secondary-button placement-button" bindtap="adjustPlacement">返回放置校准</button>
   </view>
 
   <view class="card confirmation-card" wx:if="{{readiness.ready}}">

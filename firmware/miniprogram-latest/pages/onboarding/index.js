@@ -55,6 +55,7 @@ Page({
       if (this._reauth && wx.getStorageSync('haomian-setup-complete')) {
         wx.removeStorageSync('haomian-setup-complete')
       }
+      if (wx.setNavigationBarTitle) wx.setNavigationBarTitle({ title: '月石' })
       this.setData({ phase: 'profile', ...normalizePreferences(result.profile) })
     } catch (error) {
       this.setData({ error: toUserError(error, '微信登录') })

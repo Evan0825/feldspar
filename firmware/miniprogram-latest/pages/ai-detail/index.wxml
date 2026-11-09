@@ -5,7 +5,6 @@
   <block wx:if="{{!loading && interpretation}}">
     <view class="detail-meta"><text>{{interpretation.periodLabel}} · {{interpretation.kind === 'seven-night' ? '7 晚' : '单晚'}}</text><text>数据质量 {{interpretation.dataQuality}}</text></view>
     <view class="page-title">{{interpretation.conclusion}}</view>
-    <text class="boundary-copy">仅反映趋势关联。</text>
 
     <view class="section-title">判断依据</view>
     <view class="evidence-card {{selectedEvidenceId === item.id ? 'expanded' : ''}}" wx:for="{{interpretation.evidence}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleEvidence">

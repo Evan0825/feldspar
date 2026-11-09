@@ -27,3 +27,10 @@ test('IO readback keeps light, volume and play state distinct', () => {
     assert.equal(parseIoReply(io(fields), 3), null)
   }
 })
+
+test('only a valid extended device response advertises a sound timer', () => {
+  const io = fields => parseIoReply({ type: 'IO', fields: fields.split(',') }, 3)
+  assert.equal(io('3,1,40,21,5,60,1,2,0').sound.timerSupported, undefined)
+  assert.equal(io('3,1,40,21,5,60,1,2,0,15,899').sound.timerRemainingSeconds, 899)
+  assert.equal(io('3,1,40,21,5,60,1,2,0,15,901'), null)
+})

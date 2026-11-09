@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -10,9 +11,10 @@
 #include "esp_netif.h"
 #include "esp_timer.h"
 #include "nvs.h"
-#include "nvs_flash.h"
 
 static const char *TAG = "wifi_mgr";
+ESP_EVENT_DEFINE_BASE(WIFI_MGR_EVENT);
+enum { WIFI_MGR_SCAN_REQUEST };
 
 /* ---- 常量 ---- */
 #define WIFI_MGR_NVS_NS     "wifi"      /* NVS 命名空间（≤15 字符） */
@@ -23,7 +25,10 @@ static const char *TAG = "wifi_mgr";
 
 /* ---- 运行时状态 ---- */
 static bool          s_inited    = false;
-static bool          s_scanning  = false;   /* AP 扫描进行中（防重复触发） */
+static atomic_bool   s_scan_requested;      /* BLE 和 Wi-Fi 事件任务共用 */
+/* Only the Wi-Fi event loop owns scan state and deferred reconnect. */
+static enum { SCAN_IDLE, SCAN_WAITING_FOR_STA, SCAN_ACTIVE } s_scan_state;
+static bool          s_reconnect_after_scan;
 static bool          s_connected = false;
 static char          s_ssid[WIFI_SSID_MAX + 1] = {0};
 static char          s_pass[WIFI_PASS_MAX + 1] = {0};
@@ -96,10 +101,43 @@ static void creds_erase(void)
     nvs_close(h);
 }
 
+static void reconnect_saved_ap(void)
+{
+    if (s_ssid[0] && esp_wifi_connect() != ESP_OK) notify("WIFI,ERR,reconnect");
+}
+
+static void finish_scan(void)
+{
+    s_scan_state = SCAN_IDLE;
+    if (s_reconnect_after_scan) reconnect_saved_ap();
+    s_reconnect_after_scan = false;
+    atomic_store(&s_scan_requested, false);
+}
+
+static void start_scan(bool wait_for_sta)
+{
+    wifi_scan_config_t cfg = {.scan_type = WIFI_SCAN_TYPE_ACTIVE};
+    esp_err_t err = esp_wifi_scan_start(&cfg, false);
+    if (err == ESP_OK) {
+        s_scan_state = SCAN_ACTIVE;
+        notify("WIFI,SCANNING");
+    } else if (err == ESP_ERR_WIFI_STATE && wait_for_sta) {
+        /* ESP-IDF rejects scan requests while the STA is still connecting. */
+        s_scan_state = SCAN_WAITING_FOR_STA;
+    } else {
+        ESP_LOGW(TAG, "scan start fail: %s", esp_err_to_name(err));
+        finish_scan();
+        notify("WIFI,SCANERR");
+    }
+}
+
 /* ---- WiFi 事件处理 ---- */
 static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    if (base == WIFI_EVENT) {
+    (void)arg;
+    if (base == WIFI_MGR_EVENT) {
+        start_scan(true);
+    } else if (base == WIFI_EVENT) {
         switch (id) {
         case WIFI_EVENT_STA_START:
             /* STA 启动：若存有凭据则发起连接 */
@@ -113,6 +151,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
 
         case WIFI_EVENT_STA_CONNECTED:
             ESP_LOGI(TAG, "STA connected to %s, waiting IP", s_ssid);
+            if (s_scan_state == SCAN_WAITING_FOR_STA) start_scan(false);
             break;
 
         case WIFI_EVENT_STA_DISCONNECTED: {
@@ -122,19 +161,24 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
             s_ip[0] = 0;
             if (s_ssid[0]) {
                 notify("WIFI,DISCONNECTED,%s,%d", s_ssid, (int)e->reason);
-                /* 自动重连（凭据仍在 NVS） */
-                if (esp_wifi_connect() != ESP_OK) notify("WIFI,ERR,reconnect");
+            }
+            if (s_scan_state == SCAN_IDLE) {
+                reconnect_saved_ap();
+            } else {
+                s_reconnect_after_scan = true;
+                if (s_scan_state == SCAN_WAITING_FOR_STA) start_scan(false);
             }
             break;
         }
         case WIFI_EVENT_SCAN_DONE: {
+            if (s_scan_state != SCAN_ACTIVE) break;
             /* 扫描完成：取结果 → 同名去重（保留最强信号）→ 按信号降序 → 逐条上报 */
             uint16_t ap_num = 0;
             esp_wifi_scan_get_ap_num(&ap_num);
             ESP_LOGI(TAG, "scan done, raw ap_num=%u", (unsigned)ap_num);
 
             if (ap_num == 0) {
-                s_scanning = false;
+                finish_scan();
                 notify("WIFI,SCANEND,0");
                 break;
             }
@@ -142,14 +186,14 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
             wifi_ap_record_t *aps = calloc(ap_num, sizeof(wifi_ap_record_t));
             if (aps == NULL) {
                 esp_wifi_clear_ap_list();
-                s_scanning = false;
+                finish_scan();
                 notify("WIFI,SCANERR");
                 break;
             }
             uint16_t got = ap_num;
             if (esp_wifi_scan_get_ap_records(&got, aps) != ESP_OK) {
                 free(aps);
-                s_scanning = false;
+                finish_scan();
                 notify("WIFI,SCANERR");
                 break;
             }
@@ -159,7 +203,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
             bool *keep = calloc(got, sizeof(bool));
             if (keep == NULL) {
                 free(aps);
-                s_scanning = false;
+                finish_scan();
                 notify("WIFI,SCANERR");
                 break;
             }
@@ -209,12 +253,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
             }
             char end[32];
             snprintf(end, sizeof(end), "WIFI,SCANEND,%u", (unsigned)sent);
-            notify(end);
 
             free(aps);
             free(keep);
             free(idx);
-            s_scanning = false;
+            finish_scan();
+            notify(end);
             break;
         }
         default:
@@ -257,6 +301,9 @@ esp_err_t wifi_mgr_init(void)
     err = esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
                                      wifi_event_handler, NULL);
     if (err != ESP_OK) { ESP_LOGE(TAG, "ip evt reg fail: %s", esp_err_to_name(err)); return err; }
+    err = esp_event_handler_register(WIFI_MGR_EVENT, WIFI_MGR_SCAN_REQUEST,
+                                     wifi_event_handler, NULL);
+    if (err != ESP_OK) { ESP_LOGE(TAG, "scan evt reg fail: %s", esp_err_to_name(err)); return err; }
 
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err != ESP_OK) { ESP_LOGE(TAG, "set mode fail: %s", esp_err_to_name(err)); return err; }
@@ -274,7 +321,7 @@ esp_err_t wifi_mgr_init(void)
 
 esp_err_t wifi_mgr_connect(const char *ssid, const char *pass)
 {
-    if (!s_inited) return ESP_ERR_INVALID_STATE;
+    if (!s_inited || atomic_load(&s_scan_requested)) return ESP_ERR_INVALID_STATE;
     if (ssid == NULL) return ESP_ERR_INVALID_ARG;
 
     size_t sn = strlen(ssid);
@@ -329,32 +376,15 @@ void wifi_mgr_forget(void)
 esp_err_t wifi_mgr_scan_start(void)
 {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
-    if (s_scanning) return ESP_ERR_INVALID_STATE;
-
-    /* 全信道主动扫描；show_hidden=false 不上报隐藏网络。
-     * 非阻塞：扫描完成后 WIFI_EVENT_SCAN_DONE 事件里取结果并上报。 */
-    wifi_scan_config_t cfg = {
-        .ssid        = NULL,
-        .bssid       = NULL,
-        .channel     = 0,
-        .show_hidden = false,
-        .scan_type   = WIFI_SCAN_TYPE_ACTIVE,
-    };
-    esp_err_t err = esp_wifi_scan_start(&cfg, false);
-    if (err != ESP_OK) {
-        ESP_LOGW(TAG, "scan start fail: %s", esp_err_to_name(err));
-        notify("WIFI,SCANERR");
-        return err;
-    }
-    s_scanning = true;
-    notify("WIFI,SCANNING");
-    ESP_LOGI(TAG, "ap scan started");
-    return ESP_OK;
+    if (atomic_exchange(&s_scan_requested, true)) return ESP_ERR_INVALID_STATE;
+    esp_err_t err = esp_event_post(WIFI_MGR_EVENT, WIFI_MGR_SCAN_REQUEST, NULL, 0, 0);
+    if (err != ESP_OK) atomic_store(&s_scan_requested, false);
+    return err;
 }
 
 bool wifi_mgr_scan_running(void)
 {
-    return s_scanning;
+    return atomic_load(&s_scan_requested);
 }
 
 bool wifi_mgr_is_connected(void)

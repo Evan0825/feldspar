@@ -5,8 +5,9 @@
   <state-banner wx:elif="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="retry" bindaction="handleServiceAction" />
   <view class="empty-state" wx:elif="{{phase === 'empty'}}">暂无夜间事件</view>
   <block wx:else>
-  <scroll-view class="filter-scroll" scroll-x><view class="chip-row nowrap"><view wx:for="{{filters}}" wx:key="id" class="chip {{filter === item.id ? 'active' : ''}}" data-filter="{{item.id}}" bindtap="setFilter">{{item.name}}</view></view></scroll-view>
-  <view class="timeline">
+  <scroll-view class="filter-scroll" scroll-x><view class="chip-row nowrap"><view wx:for="{{filters}}" wx:key="id" class="chip {{filter === item.id ? 'active' : ''}}" role="button" aria-pressed="{{filter === item.id}}" data-filter="{{item.id}}" bindtap="setFilter">{{item.name}}</view></view></scroll-view>
+  <view wx:if="{{!visibleEvents.length}}" class="empty-state">该类型暂无记录</view>
+  <view wx:else class="timeline">
     <view class="event-row" wx:for="{{visibleEvents}}" wx:key="id"><view class="event-time">{{item.time}}</view><view class="line"><view class="event-dot {{item.type}}"></view></view><view class="event-card"><text>{{item.title}}</text><text>{{item.detail}}</text></view></view>
   </view>
 

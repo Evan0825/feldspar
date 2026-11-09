@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "AI",
+  "disableScroll": true,
   "usingComponents": {
     "state-banner": "/components/state-banner/index"
   }

@@ -13,12 +13,11 @@ Bandit 在线学习引擎 —— Agent 自主控制核心
   - 数据留存：每次更新写入 DB，演示"学习曲线"
 """
 import json
-import math
 import random
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from app.database import get_conn, get_device_config, gen_id
+from app.database import get_conn, get_device_config
 from app.config import DATABASE_BACKEND
 
 # ─── 安全边界（和 candidates.py / config 校验一致） ───

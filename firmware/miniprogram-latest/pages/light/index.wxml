@@ -2,20 +2,23 @@
 
   <view class="state-card" wx:if="{{loading}}"><text class="state-title">正在读取夜灯状态</text></view>
   <state-banner wx:elif="{{loadError}}" tone="danger" title="{{loadError.title}}" detail="{{loadError.detail}}" retryable="{{loadError.retryable}}" action="{{loadError.action}}" bindretry="retry" bindaction="handleServiceAction" />
-  <view class="empty-state night-empty" wx:elif="{{phase === 'empty'}}">暂无夜灯设置。请确认月石床头主机已连接。</view>
+  <view class="empty-state" wx:elif="{{phase === 'empty'}}">暂无夜灯设置。请确认月石床头主机已连接。</view>
   <block wx:else>
-  <state-banner wx:if="{{light.syncPending}}" tone="warning" title="设备回读已确认，云端待同步" detail="当前显示设备驱动状态。请联网后重新读取，不必重复执行。" />
-  <state-banner wx:if="{{!light.confirmed}}" tone="warning" title="尚未核验设备状态" detail="当前仅有云端偏好，连接设备后才能确认实际驱动状态。" />
+  <state-banner wx:if="{{light.syncPending}}" tone="warning" title="设备回读已确认，云端待同步" detail="联网后可重新读取。" />
+  <state-banner wx:if="{{!light.confirmed}}" tone="warning" title="设备状态待确认" detail="连接设备后可读取实际状态。" />
   <state-banner wx:if="{{actionError}}" tone="danger" title="{{actionError.title}}" detail="{{actionError.detail}}" retryable="{{actionError.retryable}}" action="{{actionError.action}}" bindretry="retryAction" bindaction="handleActionError" />
   <state-banner wx:if="{{controlError}}" tone="warning" title="{{controlError.title}}" detail="{{controlError.detail}}" retryable="{{controlError.retryable}}" action="{{controlError.action}}" bindretry="retry" bindaction="handleServiceAction" />
-  <view class="lamp-stage {{light.enabled ? 'on' : ''}}" style="opacity: {{light.enabled ? 0.72 + brightnessDraft / 140 : 1}}"><view class="lamp-device"><view class="lamp-line"></view></view><view class="lamp-glow"></view></view>
-  <button hover-class="none" class="light-toggle" loading="{{syncing}}" disabled="{{syncing || !controlAvailable}}" bindtap="toggle">{{light.enabled ? '关闭夜灯' : '打开夜灯'}}</button>
-  <view class="section-title night-section">灯效</view>
-  <view class="mode-grid"><view class="mode-card {{light.mode === 'bedtime-breathe' ? 'active' : ''}} {{syncing || !controlAvailable ? 'disabled' : ''}}" data-mode="bedtime-breathe" bindtap="setMode"><text>睡前呼吸灯</text></view><view class="mode-card {{light.mode === 'night-low' ? 'active' : ''}} {{syncing || !controlAvailable ? 'disabled' : ''}}" data-mode="night-low" bindtap="setMode"><text>低亮起夜</text></view></view>
+  <view class="lamp-stage {{light.enabled ? 'on' : ''}} {{(light.color === 'white' || (!light.color && light.mode === 'night-low')) ? 'white' : ''}}">
+    <view class="lamp-glow" wx:if="{{light.enabled}}" style="opacity: {{0.2 + brightnessDraft * 0.008}}" />
+    <image class="product-visual" src="/images/system-hero.png" mode="aspectFit" aria-label="月石床头主机与枕下振动片" />
+  </view>
+  <button hover-class="none" class="primary-button light-toggle" loading="{{syncing}}" disabled="{{syncing || !controlAvailable}}" bindtap="toggle">{{light.enabled ? '关闭夜灯' : '打开夜灯'}}</button>
+  <view class="section-title">灯效</view>
+  <view class="mode-grid"><view role="button" class="mode-card {{light.mode === 'bedtime-breathe' ? 'active' : ''}} {{syncing || !controlAvailable ? 'disabled' : ''}}" data-mode="bedtime-breathe" aria-pressed="{{light.mode === 'bedtime-breathe'}}" bindtap="setMode"><image src="/images/ui/night-amber{{light.mode === 'bedtime-breathe' ? '-active' : ''}}.png" mode="aspectFit" /><text>睡前呼吸灯</text></view><view role="button" class="mode-card {{light.mode === 'night-low' ? 'active' : ''}} {{syncing || !controlAvailable ? 'disabled' : ''}}" data-mode="night-low" aria-pressed="{{light.mode === 'night-low'}}" bindtap="setMode"><image src="/images/ui/night-white{{light.mode === 'night-low' ? '-active' : ''}}.png" mode="aspectFit" /><text>{{cloudControl ? '低亮暖光' : '白光照明'}}</text></view></view>
   <view class="night-slider">
     <view class="slider-heading"><view><text>亮度</text></view><text class="slider-value">{{brightnessDraft}}%</text></view>
-    <view class="large-slider"><slider min="5" max="40" step="1" value="{{brightnessDraft}}" disabled="{{syncing || !controlAvailable}}" activeColor="#E2A23A" backgroundColor="#5B4639" block-color="#FFE5B3" block-size="28" bindchanging="previewBrightness" bindchange="setBrightness" /></view>
-    <view class="slider-scale"><text>低亮</text><text>明亮</text></view>
+    <view class="large-slider"><slider aria-label="亮度" min="5" max="{{cloudControl ? 40 : 100}}" step="1" value="{{brightnessDraft}}" disabled="{{syncing || !controlAvailable}}" activeColor="#F9C747" backgroundColor="#EAE2D5" block-color="#FFFDF8" block-size="28" bindchanging="previewBrightness" bindchange="setBrightness" /></view>
+
   </view>
 
   </block>

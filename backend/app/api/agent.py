@@ -13,11 +13,11 @@ Agent 决策 API + 晨报 + 七晚学习 + 候选配置 + 反馈
 from fastapi import APIRouter, HTTPException, Header
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
-from datetime import datetime, date
+from typing import Optional, List, Dict
+from datetime import datetime
 import json
 
-from app.models.schemas import AgentTick, AgentDecision, DeviceConfig
+from app.models.schemas import AgentTick, AgentDecision
 from app import config as app_config
 from app.access import require_user_device_access
 from app.device_auth import require_device_key
@@ -25,7 +25,7 @@ from app.agent.engine import SnoozMateAgent
 from app.agent.safety import validate_agent_config
 from app.agent.candidates import (
     create_candidate, list_candidates, get_candidate,
-    approve_candidate, reject_candidate, generate_ai_candidate,
+    reject_candidate, generate_ai_candidate,
     get_application_log,
 )
 from app.agent.ai_interpretation import (
@@ -40,14 +40,14 @@ from app.agent.ai_interpretation import (
     request_llm_chat,
 )
 from app.database import (
-    get_device_config, get_recent_events, get_night_id, get_latest_night_id,
+    get_device_config, get_night_id, get_latest_night_id,
     compute_daily_summary, get_daily_summary, get_weekly_stats,
     update_device_config, get_device, upsert_device,
     get_conn, get_latest_event_metadata, get_saved_ai_interpretation, save_ai_interpretation,
     create_device_command, get_active_device_command, get_device_command,
     requeue_device_command,
 )
-from app.config import DEFAULT_AGENT_CONFIG, DEVICE_ONLINE_TTL_SECONDS
+from app.config import DEVICE_ONLINE_TTL_SECONDS
 
 router = APIRouter(prefix="/api/v1", tags=["agent"])
 

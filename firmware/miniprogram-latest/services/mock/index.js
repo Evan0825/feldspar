@@ -4,6 +4,8 @@ const { buildCalibration } = require('../../domain/calibration')
 const { classifyAiQuestion } = require('../../domain/ai-safety')
 const { canStopIntervention } = require('../../domain/guardian')
 const { validateGentleCandidate } = require('../../domain/ai-candidate')
+const { resolveLightColor } = require('../../utils/ble')
+const { isoDate } = require('../../domain/sleep-period')
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value))
@@ -35,9 +37,14 @@ function readStoredChatSessions() {
   return Array.isArray(sessions) ? clone(sessions) : []
 }
 
-function storeChatSessions(sessions) {
+function isMockChat(item, ownerId) {
+  return item && item.storageMode !== 'local' && (!item.ownerId || item.ownerId === ownerId)
+}
+
+function storeChatSessions(sessions, ownerId) {
   if (typeof wx !== 'undefined' && typeof wx.setStorageSync === 'function') {
-    wx.setStorageSync('haomian-ai-chat-sessions', clone(sessions))
+    const others = readStoredChatSessions().filter(item => !isMockChat(item, ownerId))
+    wx.setStorageSync('haomian-ai-chat-sessions', clone([...sessions, ...others]))
   }
 }
 
@@ -59,7 +66,7 @@ function createMockServices() {
   let guardianSnapshot = clone(data.guardianSnapshot)
   let settingsCommand = null
   let commandSequence = 0
-  let chatSessions = readStoredChatSessions()
+  let chatSessions = readStoredChatSessions().filter(item => isMockChat(item, currentProfile.id))
   const feedbackByNight = new Map()
   let demoStates = {
     offline: false,
@@ -73,7 +80,7 @@ function createMockServices() {
     commandOutcome: 'applied',
   }
 
-  return {
+  const services = {
     serviceMode: 'mock',
     configured: true,
     auth: {
@@ -157,12 +164,13 @@ function createMockServices() {
         if (typeof command.enabled === 'boolean') light.enabled = command.enabled
         if (['bedtime-breathe', 'night-low'].includes(command.mode)) {
           light.mode = command.mode
-          light.modeName = command.mode === 'bedtime-breathe' ? '睡前呼吸灯' : '低亮起夜'
+          light.modeName = command.mode === 'bedtime-breathe' ? '睡前呼吸灯' : '白光照明'
         }
-        if (command.brightness !== undefined) light.brightness = clamp(command.brightness, 5, 40)
-        light.color = 'amber'
-        light.colorTemperatureKelvin = 2200
-        light.rgb = { r: 255, g: 132, b: 34 }
+        if (command.brightness !== undefined) light.brightness = clamp(command.brightness, 5, 100)
+        const color = resolveLightColor(command.color || light.color)
+        light.color = color.name
+        light.colorTemperatureKelvin = color.colorTemperatureKelvin
+        light.rgb = { r: color.r, g: color.g, b: color.b }
         return delay(light)
       },
       setDemoState: async ({ kind, enabled }) => {
@@ -181,7 +189,11 @@ function createMockServices() {
           status.provisioned = !value
           status.host.online = !value && !demoStates.offline
         }
-        if (kind === 'pad-disconnected') { demoStates.padDisconnected = value; status.pad.connected = !value }
+        if (kind === 'pad-disconnected') {
+          demoStates.padDisconnected = value
+          status.pad.connected = !value
+          status.pad.status = value ? 'disconnected' : 'connected'
+        }
         if (kind === 'no-data') demoStates.noData = value
         if (kind === 'high-attention') demoStates.highAttention = value
         if (kind === 'sync-failed') {
@@ -239,13 +251,26 @@ function createMockServices() {
       },
     },
     reports: {
-      getLatest: () => {
+      getLatest: ({ nightId } = {}) => {
         if (demoStates.syncFailed) return delayReject(new Error('REPORT_SYNC_FAILED'))
-        if (demoStates.noData) return delay(null)
-        return delay({ ...data.latestReport, attentionLevel: demoStates.highAttention ? 'consult' : data.latestReport.attentionLevel })
+        if (demoStates.noData || (nightId && nightId !== data.latestReport.id)) return delay(null)
+        return delay({ ...data.latestReport, dataSource: 'simulated', attentionLevel: demoStates.highAttention ? 'consult' : data.latestReport.attentionLevel })
       },
-      getEvents: () => delay(demoStates.noData ? [] : data.events),
+      getByNightId: (nightId) => services.reports.getLatest({ nightId }),
+      getEvents: ({ nightId } = {}) => delay(demoStates.noData || (nightId && nightId !== data.latestReport.id) ? [] : data.events),
       getSevenNightTrend: () => delay(demoStates.noData ? [] : data.sevenNightTrend),
+      getPeriodTrend: ({ periodStart, periodEnd } = {}) => {
+        if (demoStates.syncFailed) return delayReject(new Error('REPORT_SYNC_FAILED'))
+        if (demoStates.noData) return delay([])
+        const records = data.sevenNightTrend.map(item => {
+          const [month, day] = item.date.split('/')
+          const dateISO = `2026-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+          const nightId = `night-${dateISO}`
+          const effectiveMonitoringMinutes = nightId === data.latestReport.id ? data.latestReport.effectiveMonitoringMinutes : null
+          return { ...item, dateISO, nightId, effectiveMonitoringMinutes, feedback: feedbackByNight.get(nightId) || null }
+        }).filter(item => item.dateISO >= periodStart && item.dateISO <= periodEnd)
+        return delay(records)
+      },
       submitFeedback: async (next) => {
         const nightId = requireNightId(next && next.nightId)
         const feedback = { nightId, ...normalizeFeedback(next) }
@@ -258,13 +283,13 @@ function createMockServices() {
       getOverview: (scope = 'single-night') => {
         const kind = scope === 'seven-night' ? 'seven-night' : 'single-night'
         const interpretation = data.aiInterpretations.find((item) => item.kind === kind)
-        return delay(interpretation)
+        return delay(demoStates.noData ? null : { ...interpretation, sourceDate: isoDate(interpretation.nightId) || interpretation.periodEnd })
       },
       getRecords: ({ kind } = {}) => delay(kind
         ? data.aiInterpretations.filter((item) => item.kind === kind)
         : data.aiInterpretations),
       getChatSessions: () => delay(chatSessions.map((session) => ({
-        sessionId: session.sessionId,
+        ...session,
         title: session.title,
         preview: session.messages.length ? session.messages[session.messages.length - 1].text : '',
         updatedAt: session.updatedAt,
@@ -275,6 +300,7 @@ function createMockServices() {
       },
       saveChatSession: async (next = {}) => {
         const session = {
+          ...next, ownerId: currentProfile.id, storageMode: 'local-demo',
           sessionId: next.sessionId || `ai-chat-${Date.now()}`,
           interpretationId: next.interpretationId,
           interpretationRevision: next.interpretationRevision,
@@ -285,21 +311,28 @@ function createMockServices() {
           carriedMemory: next.carriedMemory || '',
           title: next.title || '新对话',
           messages: clone(next.messages || []),
-          updatedAt: '刚刚',
+          updatedAt: new Date().toISOString(),
         }
         chatSessions = [session, ...chatSessions.filter((item) => item.sessionId !== session.sessionId)].slice(0, 30)
-        storeChatSessions(chatSessions)
+        storeChatSessions(chatSessions, currentProfile.id)
         return delay(session)
+      },
+      deleteChatSession: async (sessionId) => {
+        if (!chatSessions.some(item => item.sessionId === sessionId)) throw new Error('AI_CHAT_SESSION_NOT_FOUND')
+        chatSessions = chatSessions.filter(item => item.sessionId !== sessionId)
+        storeChatSessions(chatSessions, currentProfile.id)
+        return { deleted: true, sessionId }
       },
       getInterpretation: (interpretationId) => {
         const interpretation = findInterpretation(interpretationId)
         return interpretation ? delay(interpretation) : delayReject(new Error('AI_INTERPRETATION_NOT_FOUND'))
       },
       ask: ({ interpretationId, interpretationRevision, message } = {}) => {
+        if (!String(message || '').trim()) return delayReject(new Error('AI_MESSAGE_REQUIRED'))
         const interpretation = findInterpretation(interpretationId)
+        if (!interpretationId) return delay({ role: 'assistant', text: '可以先确认月石连接，再选择舒适的灯光和声音。', source: 'rule-demo' })
         if (!interpretation) return delayReject(new Error('AI_INTERPRETATION_NOT_FOUND'))
         if (interpretation.revision !== interpretationRevision) return delayReject(new Error('AI_CONTEXT_REVISION_MISMATCH'))
-        if (!String(message || '').trim()) return delayReject(new Error('AI_MESSAGE_REQUIRED'))
         return delay(buildAiAnswer(interpretation, message))
       },
       getTonightCandidate: (interpretationId) => {
@@ -330,6 +363,8 @@ function createMockServices() {
       },
     },
   }
+
+  return services
 
   function findInterpretation(interpretationId) {
     return data.aiInterpretations.find((item) => item.interpretationId === interpretationId)

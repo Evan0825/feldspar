@@ -2,6 +2,8 @@
 from datetime import datetime
 from pathlib import Path
 import sqlite3
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -13,13 +15,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+import httpx
 from app import database
 from app.agent.device_runtime import LocalInterventionRuntime, MemoryActuator, SensorFrame
 from app.api import events
 from app.config import DEFAULT_AGENT_CONFIG
 from app.models.schemas import EventIn
 from app.api.device_runtime import RuntimeSnapshotIn
-from app.mqtt_service import MqttRealtimeService
+from app.mqtt_service import ExternalAudioModelClient, MqttRealtimeService
+from app.agent import ai_interpretation
 
 START = datetime(2026, 10, 19, 22, tzinfo=ZoneInfo("Asia/Shanghai")).timestamp()
 
@@ -143,6 +147,39 @@ class UnknownObservationRegressions(unittest.TestCase):
             expected = {"in_bed": None, "body_motion_level": None} if index < 2 else {"in_bed": 0, "body_motion_level": 0}
             self.assertEqual(self.latest_observations(), expected)
 
+    def test_mqtt_audio_retransmission_preserves_the_window_and_is_not_analyzed_twice(self):
+        import base64
+        import json
+        from app import config
+        from app.mqtt_topics import device_topic
+
+        audio_model = Mock()
+        audio_model.analyze.return_value = {"confidence": 0.95, "source": "external_audio_model"}
+        service = MqttRealtimeService(now_fn=lambda: START, audio_model_client=audio_model)
+        topic = device_topic("offline-test", "audio", "up")
+        frame_samples = config.MQTT_AUDIO_FRAME_SAMPLES
+        frame = {
+            "session_id": "synthetic-night", "codec": "pcm_s16le", "channels": 1,
+            "timestamp_ms": int(START * 1000), "sample_rate": config.MQTT_AUDIO_SAMPLE_RATE,
+            "frame_samples": frame_samples,
+            "data_b64": base64.b64encode(bytes(frame_samples * 2)).decode(),
+        }
+
+        with patch.multiple(config, MQTT_AUDIO_ENABLED=True, MQTT_AUDIO_ANALYSIS_WINDOW_SECONDS=2.0,
+                            AUDIO_MODEL_URL="https://offline-model.invalid"), \
+                patch("app.mqtt_service.raw_candidate_audio_allowed", return_value=True):
+            def send(sequence):
+                return service.ingest_message(topic, json.dumps({**frame, "sequence": sequence}).encode())
+
+            self.assertEqual(send(0)["status"], "buffering")
+            self.assertEqual(send(1)["status"], "buffering")
+            self.assertEqual(send(1)["status"], "duplicate")
+            self.assertEqual(send(2)["status"], "buffering")
+            self.assertTrue(send(3)["observation_recorded"])
+            for sequence in range(4):
+                self.assertEqual(send(sequence)["status"], "duplicate")
+            audio_model.analyze.assert_called_once()
+
     def test_direct_and_batch_database_writes_preserve_unknown(self):
         database.insert_event(self.payload())
         self.assertEqual(self.latest_observations(), {"in_bed": None, "body_motion_level": None})
@@ -205,6 +242,107 @@ class UnknownObservationRegressions(unittest.TestCase):
                                  {"name": "body_motion_level", "nullable": "YES", "default_value": None}]
         database._allow_unknown_mysql_observations(conn)
         self.assertFalse(any(call.args[0].startswith("ALTER TABLE") for call in conn.execute.call_args_list))
+
+
+class DeepSeekProviderChecks(unittest.IsolatedAsyncioTestCase):
+    def test_explicit_provider_does_not_inherit_another_providers_credentials(self):
+        env = {**os.environ, "SNOOZMATE_LLM_PROVIDER": "deepseek", "SNOOZMATE_LLM_KEY": "",
+               "SNOOZMATE_LLM_BASE_URL": "", "SNOOZMATE_LLM_MODEL": "", "DEEPSEEK_API_KEY": "",
+               "OPENAI_API_KEY": "unrelated-fixture", "OPENAI_BASE_URL": "https://other.example.invalid",
+               "OPENAI_MODEL": "unrelated-model"}
+        subprocess.run([sys.executable, "-c", """
+from app import config
+assert config.LLM_API_KEY == ""
+assert config.LLM_BASE_URL == "https://api.deepseek.com"
+assert config.LLM_MODEL == "deepseek-flash"
+"""], cwd=Path(__file__).resolve().parents[1], env=env, check=True)
+
+    async def test_deepseek_request_uses_nonthinking_mode(self):
+        import json
+
+        calls = []
+        def reply(request):
+            calls.append((str(request.url), json.loads(request.content)))
+            return httpx.Response(200, json={"choices": [{"message": {"content": "结构化测试通过"}}]})
+
+        client = httpx.AsyncClient
+        with patch.multiple(ai_interpretation.config, LLM_PROVIDER="deepseek", LLM_API_KEY="fixture",
+                            LLM_BASE_URL="https://api.deepseek.com", LLM_MODEL="deepseek-flash"), \
+                patch.object(ai_interpretation.httpx, "AsyncClient", side_effect=lambda **kw:
+                    client(transport=httpx.MockTransport(reply), **kw)):
+            result = await ai_interpretation.request_llm_chat([{"role": "user", "content": "合成测试"}], 80)
+        self.assertEqual(result, "结构化测试通过")
+        self.assertEqual(calls[0][0], "https://api.deepseek.com/chat/completions")
+        self.assertEqual(calls[0][1]["thinking"], {"type": "disabled"})
+
+
+class ArkStandardProviderChecks(unittest.IsolatedAsyncioTestCase):
+    def test_dual_profile_uses_the_standard_ark_endpoint_and_dedicated_key(self):
+        env = {**os.environ, "SNOOZMATE_LLM_PROVIDER": "volcengine-ark-standard",
+               "ARK_API_KEY": "ark-fixture", "OPENAI_API_KEY": "unrelated-fixture",
+               "SNOOZMATE_LLM_KEY": "old-fixture", "SNOOZMATE_LLM_MODEL": "",
+               "SNOOZMATE_AUDIO_MODEL_KEY": "", "SNOOZMATE_AUDIO_MODEL_NAME": "",
+               "SNOOZMATE_MQTT_AUDIO_ENABLED": "false", "SNOOZMATE_RAW_CANDIDATE_AUDIO_ENABLED": "false"}
+        subprocess.run([sys.executable, "-c", """
+from app import config
+assert config.LLM_BASE_URL == config.AUDIO_MODEL_URL == "https://ark.cn-beijing.volces.com/api/v3"
+assert config.LLM_API_KEY == config.AUDIO_MODEL_KEY == "ark-fixture"
+assert config.LLM_MODEL == "deepseek-v4-1-flash-261017"
+assert config.AUDIO_MODEL_NAME == "doubao-seed-2-1-lite-260915"
+assert config.AUDIO_MODEL_PROTOCOL == "volcengine_chat"
+assert config.AUDIO_MODEL_AUDIO_PART_TYPE == "input_audio"
+assert not config.MQTT_AUDIO_ENABLED and not config.RAW_CANDIDATE_AUDIO_ENABLED
+"""], cwd=Path(__file__).resolve().parents[1], env=env, check=True)
+
+    async def test_text_uses_standard_inference_with_nonthinking_mode(self):
+        import json
+
+        captured = []
+        def reply(request):
+            captured.append((str(request.url), json.loads(request.content)))
+            return httpx.Response(200, json={"model": "deepseek-v4-1-flash-261017", "choices": [
+                {"message": {"content": "结构化样本"}}]})
+
+        client = httpx.AsyncClient
+        with patch.multiple(ai_interpretation.config, LLM_PROVIDER="volcengine-ark-standard",
+                            LLM_API_KEY="ark-fixture", LLM_BASE_URL="https://ark.cn-beijing.volces.com/api/v3",
+                            LLM_MODEL="deepseek-v4-1-flash-261017"), \
+                patch.object(ai_interpretation.httpx, "AsyncClient", side_effect=lambda **kw:
+                    client(transport=httpx.MockTransport(reply), **kw)):
+            result = await ai_interpretation.request_llm_chat([{"role": "user", "content": "合成晨报"}], 80)
+        self.assertEqual(result, "结构化样本")
+        self.assertEqual(captured[0][0], "https://ark.cn-beijing.volces.com/api/v3/chat/completions")
+        self.assertEqual(captured[0][1]["model"], "deepseek-v4-1-flash-261017")
+        self.assertEqual(captured[0][1]["thinking"], {"type": "disabled"})
+
+    def test_synthetic_audio_uses_the_ark_wav_format_without_device_identifiers(self):
+        import base64
+        import io
+        import json
+        import wave
+        from app import config
+
+        response = Mock()
+        response.json.return_value = {"model": "doubao-seed-2-1-lite-260915", "choices": [
+            {"message": {"content": '{"confidence": 0.1, "is_snore": false, "reason": "synthetic"}'}}]}
+        pcm = b"\x00\x00" * 1600
+        with patch.multiple(config, LLM_PROVIDER="volcengine-ark-standard",
+                            AUDIO_MODEL_PROTOCOL="volcengine_chat", AUDIO_MODEL_AUDIO_PART_TYPE="input_audio",
+                            AUDIO_MODEL_URL="https://ark.cn-beijing.volces.com/api/v3",
+                            AUDIO_MODEL_KEY="ark-fixture", AUDIO_MODEL_NAME="doubao-seed-2-1-lite-260915"), \
+                patch("app.mqtt_service.requests.post", return_value=response) as post:
+            result = ExternalAudioModelClient().analyze(device_id="offline-device", session_id="synthetic",
+                sequence_start=1, sequence_end=1, timestamp_ms=0, sample_rate=16000, pcm_bytes=pcm)
+        self.assertEqual(result["confidence"], 0.1)
+        self.assertEqual(post.call_args.args[0], "https://ark.cn-beijing.volces.com/api/v3/chat/completions")
+        body = post.call_args.kwargs["json"]
+        self.assertEqual(body["thinking"], {"type": "disabled"})
+        self.assertNotIn("offline-device", json.dumps(body))
+        audio = body["messages"][1]["content"][1]["input_audio"]
+        self.assertEqual(audio["format"], "wav")
+        with wave.open(io.BytesIO(base64.b64decode(audio["data"], validate=True))) as wav:
+            self.assertEqual((wav.getframerate(), wav.getnchannels(), wav.getsampwidth()), (16000, 1, 2))
+            self.assertEqual(wav.readframes(wav.getnframes()), pcm)
 
 
 if __name__ == "__main__":

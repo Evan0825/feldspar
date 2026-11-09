@@ -1,5 +1,5 @@
 <view class="page live-page">
-  <view class="freshness" wx:if="{{snapshot}}"><view class="status-dot {{snapshot.freshness === 'fresh' && snapshot.source === 'device-runtime' ? '' : 'warning'}}"></view><text>{{snapshot.freshness === 'fresh' ? '实时快照' : '状态延迟'}}</text></view>
+  <view class="freshness" wx:if="{{snapshot}}"><view class="status-dot {{snapshot.freshness === 'fresh' && snapshot.source === 'device-runtime' ? '' : 'warning'}}"></view><text>{{demoMode ? '示例状态' : snapshot.freshness === 'fresh' ? '实时快照' : '状态延迟'}}</text></view>
 
   <view class="state-card" wx:if="{{loading}}"><text>正在读取月石状态</text></view>
   <state-banner wx:elif="{{error && !snapshot}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" bindretry="load" />
@@ -17,7 +17,12 @@
     </view>
 
     <view class="cloud-card" wx:if="{{snapshot.cloudRealtime}}">
-      <view class="row"><text class="section-label">云端实时通道</text><text class="cloud-state {{snapshot.cloudRealtime.mqttConnected ? 'ok' : 'warn'}}">{{snapshot.cloudRealtime.mqttConnected ? 'MQTT 已连接' : 'MQTT 未连接'}}</text></view>
+      <view class="row"><text class="section-label">云端连接</text><text class="cloud-state {{snapshot.cloudRealtime.mqttConnected ? 'ok' : 'warn'}}">{{snapshot.cloudRealtime.mqttConnected ? '已连接' : '未连接'}}</text></view>
+      <view class="cloud-details" wx:if="{{snapshot.cloudRealtime.acoustic}}">
+        <text>声学规则观察</text>
+        <text>{{snapshot.cloudRealtime.acoustic.label}}</text>
+        <text wx:if="{{snapshot.cloudRealtime.acoustic.validWindows !== null}}">{{snapshot.cloudRealtime.acoustic.validWindows}} / 30 个有效窗口</text>
+      </view>
       <view class="cloud-details">
         <text>{{snapshot.cloudRealtime.audioEnabled ? '候选短音频已授权' : '音频上传未启用'}}</text>
         <text>待传 {{snapshot.cloudRealtime.audioQueueDepth}} · 丢弃 {{snapshot.cloudRealtime.audioDropped}}</text>
@@ -40,7 +45,6 @@
     <view class="demo-panel" wx:if="{{demoMode && showDemoPanel}}"><text class="demo-title">演示状态</text><view class="demo-row"><button hover-class="none" wx:for="{{demoPhases}}" wx:key="id" class="demo-chip {{snapshot.guardianState === item.id ? 'active' : ''}}" data-phase="{{item.id}}" bindtap="setDemoPhase">{{item.name}}</button></view></view>
   </block>
 
-  <text class="demo-source" wx:if="{{demoMode}}">演示数据</text>
   <button hover-class="none" class="primary-button" bindtap="openTonight">提醒设置</button>
   <button hover-class="none" class="secondary-button back-tonight" bindtap="backTonight">返回月石</button>
 

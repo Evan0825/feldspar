@@ -88,13 +88,20 @@ if not 0 <= NIGHT_START_HOUR <= 23 or not 0 <= NIGHT_END_HOUR <= 23 or NIGHT_STA
 # LLM is optional. Credentials are read from deployment environment variables only.
 _OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
 _ARK_KEY = os.environ.get("ARK_API_KEY", "").strip()
-LLM_API_KEY = os.environ.get("SNOOZMATE_LLM_KEY", "").strip() or _OPENAI_KEY or _ARK_KEY
 _provider = os.environ.get("SNOOZMATE_LLM_PROVIDER", "").strip()
 LLM_PROVIDER = _provider or ("volcengine-ark" if _ARK_KEY and not _OPENAI_KEY else "openai")
-LLM_BASE_URL = os.environ.get("SNOOZMATE_LLM_BASE_URL", "").strip() or os.environ.get(
-    "OPENAI_BASE_URL",
-    "https://ark.cn-beijing.volces.com/api/coding/v3" if LLM_PROVIDER == "volcengine-ark" else "https://api.openai.com/v1",
-).strip()
+_deepseek_llm = LLM_PROVIDER == "deepseek"
+ARK_STANDARD_INFERENCE = LLM_PROVIDER == "volcengine-ark-standard"
+_ARK_INFERENCE_URL = "https://ark.cn-beijing.volces.com/api/v3"
+LLM_API_KEY = _ARK_KEY if ARK_STANDARD_INFERENCE else (os.environ.get("SNOOZMATE_LLM_KEY", "").strip() or (
+    os.environ.get("DEEPSEEK_API_KEY", "").strip() if _deepseek_llm else _OPENAI_KEY or _ARK_KEY
+))
+LLM_BASE_URL = _ARK_INFERENCE_URL if ARK_STANDARD_INFERENCE else (os.environ.get("SNOOZMATE_LLM_BASE_URL", "").strip() or (
+    "https://api.deepseek.com" if _deepseek_llm else os.environ.get(
+        "OPENAI_BASE_URL",
+        "https://ark.cn-beijing.volces.com/api/coding/v3" if LLM_PROVIDER == "volcengine-ark" else "https://api.openai.com/v1",
+    ).strip()
+))
 CODING_PLAN_DEFAULT_MODEL = (
     os.environ.get("SNOOZMATE_CODING_PLAN_MODEL", "").strip()
     or "ark-code-latest"
@@ -109,12 +116,15 @@ CODING_PLAN_FALLBACK_MODELS = tuple(
 )
 LLM_MODEL = (
     os.environ.get("SNOOZMATE_LLM_MODEL", "").strip()
-    or os.environ.get("OPENAI_MODEL", "").strip()
-    or os.environ.get("ARK_MODEL", "").strip()
-    or os.environ.get("ARK_ENDPOINT_ID", "").strip()
-    or (CODING_PLAN_DEFAULT_MODEL if LLM_PROVIDER == "volcengine-ark" else "gpt-4o-mini")
+    or ("deepseek-v4-1-flash-261017" if ARK_STANDARD_INFERENCE else "")
+    or ("deepseek-flash" if _deepseek_llm else (
+        os.environ.get("OPENAI_MODEL", "").strip()
+        or os.environ.get("ARK_MODEL", "").strip()
+        or os.environ.get("ARK_ENDPOINT_ID", "").strip()
+        or (CODING_PLAN_DEFAULT_MODEL if LLM_PROVIDER == "volcengine-ark" else "gpt-4o-mini")
+    ))
 )
-_ark_llm = LLM_PROVIDER == "volcengine-ark" or "/api/coding/" in LLM_BASE_URL
+_ark_llm = ARK_STANDARD_INFERENCE or LLM_PROVIDER == "volcengine-ark" or "/api/coding/" in LLM_BASE_URL
 if _ark_llm and LLM_BASE_URL.endswith("/api/coding/v1"):
     LLM_BASE_URL = LLM_BASE_URL[:-2] + "v3"
 LLM_CONNECT_TIMEOUT_SECONDS = float(os.environ.get(
@@ -301,24 +311,30 @@ MQTT_INTERVENTION_LIGHT_DURATION_MS = _clamp_int(
     10000,
 )
 
-AUDIO_MODEL_URL = os.environ.get("SNOOZMATE_AUDIO_MODEL_URL", "").strip()
-AUDIO_MODEL_PROTOCOL = os.environ.get("SNOOZMATE_AUDIO_MODEL_PROTOCOL", "custom_json").strip().lower()
+AUDIO_MODEL_KEY = _ARK_KEY if ARK_STANDARD_INFERENCE else (
+    os.environ.get("SNOOZMATE_AUDIO_MODEL_KEY", "").strip() or LLM_API_KEY
+)
+AUDIO_MODEL_URL = (_ARK_INFERENCE_URL if AUDIO_MODEL_KEY else "") if ARK_STANDARD_INFERENCE else (
+    os.environ.get("SNOOZMATE_AUDIO_MODEL_URL", "").strip()
+)
+AUDIO_MODEL_PROTOCOL = "volcengine_chat" if ARK_STANDARD_INFERENCE else (
+    os.environ.get("SNOOZMATE_AUDIO_MODEL_PROTOCOL", "custom_json").strip().lower()
+)
 if AUDIO_MODEL_PROTOCOL not in {"custom_json", "volcengine_chat"}:
     raise ValueError("SNOOZMATE_AUDIO_MODEL_PROTOCOL must be custom_json or volcengine_chat")
-AUDIO_MODEL_AUDIO_PART_TYPE = os.environ.get(
-    "SNOOZMATE_AUDIO_MODEL_AUDIO_PART_TYPE",
-    "input_audio",
-).strip().lower()
+AUDIO_MODEL_AUDIO_PART_TYPE = "input_audio" if ARK_STANDARD_INFERENCE else (
+    os.environ.get("SNOOZMATE_AUDIO_MODEL_AUDIO_PART_TYPE", "input_audio").strip().lower()
+)
 if AUDIO_MODEL_AUDIO_PART_TYPE not in {"input_audio", "audio", "audio_url"}:
     raise ValueError("SNOOZMATE_AUDIO_MODEL_AUDIO_PART_TYPE must be input_audio/audio/audio_url")
-AUDIO_MODEL_KEY = os.environ.get("SNOOZMATE_AUDIO_MODEL_KEY", "").strip() or LLM_API_KEY
 AUDIO_MODEL_NAME = (
     os.environ.get("SNOOZMATE_AUDIO_MODEL_NAME", "").strip()
+    or ("doubao-seed-2-1-lite-260915" if ARK_STANDARD_INFERENCE else "")
     or ("auto" if AUDIO_MODEL_PROTOCOL == "volcengine_chat" else "")
 )
 AUDIO_MODEL_TIMEOUT_SECONDS = _clamp_float(
-    os.environ.get("SNOOZMATE_AUDIO_MODEL_TIMEOUT_SECONDS", "3"),
-    3.0,
+    os.environ.get("SNOOZMATE_AUDIO_MODEL_TIMEOUT_SECONDS", "8" if ARK_STANDARD_INFERENCE else "3"),
+    8.0 if ARK_STANDARD_INFERENCE else 3.0,
     0.5,
     30.0,
 )

@@ -18,13 +18,16 @@
     "pages/live/index",
     "pages/ai-detail/index",
     "pages/ai-chat/index",
-    "pages/ai-plan/index"
+    "pages/ai-plan/index",
+    "pages/ai-records/index",
+    "pages/ai-memory/index",
+    "pages/report-detail/index"
   ],
   "window": {
     "navigationBarTitleText": "月石",
-    "navigationBarBackgroundColor": "#F6F0E7",
+    "navigationBarBackgroundColor": "#F7F2E9",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#F6F0E7",
+    "backgroundColor": "#F7F2E9",
     "backgroundTextStyle": "dark"
   },
   "permission": {
@@ -33,9 +36,9 @@
     }
   },
   "tabBar": {
-    "color": "#766C61",
-    "selectedColor": "#B97728",
-    "backgroundColor": "#FFF9F0",
+    "color": "#6F6558",
+    "selectedColor": "#28231D",
+    "backgroundColor": "#FFFDF8",
     "borderStyle": "white",
     "list": [
       { "pagePath": "pages/home/index", "text": "月石", "iconPath": "images/tab-tonight.png", "selectedIconPath": "images/tab-tonight-active.png" },

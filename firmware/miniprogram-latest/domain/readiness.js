@@ -37,7 +37,7 @@ function evaluateReadiness(status, marker) {
     { id: 'calibration', label: '放置校准', ready: markerReady, detail: markerReady ? '已保留本次校准凭据' : '请重新完成放置校准' },
     { id: 'host', label: '月石床头主机', ready: Boolean(status?.bound && status?.provisioned && status?.host?.online), detail: '需完成绑定、配网并保持在线' },
     { id: 'pad', label: '枕下定向振动片', ready: Boolean(status?.pad?.connected), detail: '请确认有线连接牢固' },
-    { id: 'microphones', label: '双麦克风', ready: status?.microphones?.status === 'ready', detail: '请移开遮挡并检查主机位置' },
+    { id: 'microphones', label: '麦克风', ready: status?.microphones?.status === 'ready', detail: '请移开遮挡并检查主机位置' },
     {
       id: 'radar',
       label: '24G 毫米波雷达（可选）',

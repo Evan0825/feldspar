@@ -110,3 +110,18 @@ function loadPage(name, services) {
   const page = { ...definition, data: JSON.parse(JSON.stringify(definition.data)), setData(value) { Object.assign(this.data, value) } }
   return { page, navigation }
 }
+
+test('a manually pushed plan advances only after matching versioned device readback', () => {
+  const { confirmedPlan, rememberPlanCommand } = require(path.join(root, 'domain/personal-strategy'))
+  const keys = new Map()
+  const storage = { getStorageSync: key => keys.get(key), setStorageSync: (key, value) => keys.set(key, value) }
+  const command = { deviceId: 'bench', commandId: 'push-1', expectedConfigVersion: 2, readbackConfigVersion: 3 }
+  rememberPlanCommand(storage, 'real', { ...command, status: 'ack-accepted' })
+  assert.equal(confirmedPlan({ configVersion: 3 }, 'bench', storage, 'real'), null)
+  rememberPlanCommand(storage, 'real', { ...command, status: 'applied', matchesCandidate: true, readbackSettings: {} })
+  assert.equal(confirmedPlan({ configVersion: 3 }, 'bench', storage, 'real').stage, 'preliminary')
+  assert.equal(confirmedPlan({ configVersion: 4 }, 'bench', storage, 'real'), null)
+  assert.equal(confirmedPlan({ configVersion: 3 }, 'another', storage, 'real'), null)
+  rememberPlanCommand(storage, 'real', { ...command, commandId: 'push-2', expectedConfigVersion: 3, readbackConfigVersion: 4, status: 'applied', matchesCandidate: true, readbackSettings: {} })
+  assert.equal(confirmedPlan({ configVersion: 4 }, 'bench', storage, 'real').stage, 'calibrating')
+})

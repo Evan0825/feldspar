@@ -6,7 +6,7 @@ const { COMMANDS, buildWifiConfigCommand } = require('../firmware/miniprogram-la
 
 test('active app command numbers match imported firmware header', () => {
   const header = fs.readFileSync(path.join(__dirname, '../firmware/components/ble/include/ble_protocol.h'), 'utf8')
-  const pairs = { LIGHT_LEVEL: 'LIGHT_LEVEL', LIGHT_RGB: 'LIGHT_RGB', MOTOR_SPEED: 'MOTOR_SPEED',
+  const pairs = { LIGHT_LEVEL: 'LIGHT_LEVEL', LIGHT_RGB: 'LIGHT_RGB', LIGHT_BREATHE: 'LIGHT_BREATHE', MOTOR_SPEED: 'MOTOR_SPEED',
     MOTOR_STOP: 'MOTOR_STOP', MIC_DIAG: 'MIC_DIAG', AUDIO_STOP: 'AUDIO_STOP',
     SAFETY_STATE: 'SAFETY_STATE', SAFETY_RESUME: 'SAFETY_RESUME', STOP_ALL: 'STOP_ALL',
     IO_STATE: 'IO_STATE',

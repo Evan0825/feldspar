@@ -1,5 +1,6 @@
 const services = require('../../services/index')
 const { toUserError } = require('../../domain/service-error')
+const { rememberPlanCommand } = require('../../domain/personal-strategy')
 
 const ACTIVE_STATUSES = ['pending', 'validating', 'sending', 'ack-accepted', 'readback-pending']
 
@@ -12,10 +13,12 @@ Page({
     appliedSettings: null,
     loading: true,
     applying: false,
+    fromCalibration: false,
     error: null,
   },
 
-  onLoad(options) {
+  onLoad(options = {}) {
+    if (options.from === 'calibration') this.setData({ fromCalibration: true })
     if (options.commandId) this.restoreCommand(options.commandId)
     else this.loadCandidate(decodeURIComponent(options.interpretationId || ''))
   },
@@ -51,11 +54,10 @@ Page({
   },
 
   async apply() {
-    if (this.data.applying || !this.data.candidate) return
-    const confirmed = await confirmApply()
-    if (!confirmed) return
+    if (this.data.applying || !this.data.candidate?.candidateId || this.data.command) return
     this.setData({ applying: true, error: null })
     try {
+      if (!await confirmApply(this.data.fromCalibration)) return
       this._pollAttempts = 0
       const command = await services.device.applyTonightCandidate({
         candidateId: this.data.candidate.candidateId,
@@ -98,6 +100,7 @@ Page({
     const appliedSettings = command.status === 'applied' && command.matchesCandidate === true
       ? command.readbackSettings
       : null
+    if (this.data.fromCalibration) rememberPlanCommand(wx, services.serviceMode, command)
     this.setData({ command, appliedSettings })
   },
 
@@ -114,12 +117,12 @@ Page({
   },
 })
 
-function confirmApply() {
+function confirmApply(fromCalibration) {
   return new Promise((resolve) => {
     wx.showModal({
-      title: '应用今晚温和方案？',
+      title: fromCalibration ? '推送方案到月石？' : '应用今晚温和方案？',
       content: '月石会再次校验安全边界，只有设备回读一致后才会显示已应用。',
-      confirmText: '确认应用',
+      confirmText: fromCalibration ? '确认推送' : '确认应用',
       cancelText: '再看看',
       success: (result) => resolve(Boolean(result.confirm)),
       fail: () => resolve(false),

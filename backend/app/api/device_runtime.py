@@ -33,6 +33,22 @@ from app.database import (
 router = APIRouter(prefix="/api/v1", tags=["device runtime"])
 
 
+class LightOutputIn(BaseModel):
+    enabled: bool
+    r: int = Field(ge=0, le=100)
+    g: int = Field(ge=0, le=100)
+    b: int = Field(ge=0, le=100)
+    mode: Literal["night-low", "bedtime-breathe"]
+
+
+class SoundOutputIn(BaseModel):
+    playing: bool
+    paused: bool
+    volume: int = Field(ge=0, le=100)
+    timer_minutes: Literal[0, 15, 30, 60]
+    remaining_seconds: int = Field(ge=0, le=3600)
+
+
 class RuntimeSnapshotIn(BaseModel):
     sequence: int = Field(ge=0)
     device_time: int = Field(default=0, ge=0)
@@ -69,6 +85,8 @@ class RuntimeSnapshotIn(BaseModel):
     manual_active: bool = False
     last_action: str = Field(default="", max_length=64)
     activities: list[dict] = Field(default_factory=list, max_length=20)
+    light_output: Optional[LightOutputIn] = None
+    sound_output: Optional[SoundOutputIn] = None
     capabilities: dict = Field(default_factory=dict)
 
 
@@ -97,7 +115,7 @@ class OutputsStopIn(BaseModel):
     request_id: str = Field(min_length=1, max_length=128)
 
 
-def stop_response(command):
+def dispatch_response(command):
     from app.mqtt_service import get_mqtt_service
     published = command["status"] in {"pending", "delivered"} and get_mqtt_service().publish_command(command)
     return {"status": command["status"], "command": command, "published": bool(published)}
@@ -109,7 +127,26 @@ def request_outputs_stop(device_id: str, body: OutputsStopIn, authorization: str
     identity = hashlib.sha256(body.request_id.encode()).hexdigest()[:24]
     command = create_device_command(device_id=device_id, command_type="stop_all",
         payload={"reason": "user_requested"}, idempotency_key=f"stop-all:{device_id}:{identity}", ttl_seconds=60)
-    return stop_response(command)
+    return dispatch_response(command)
+
+
+@router.post("/device/{device_id}/vibration-test")
+def request_vibration_test(device_id: str, body: OutputsStopIn, authorization: str = Header(default="")):
+    require_user_device_access(authorization, device_id, write=True)
+    snapshot = get_runtime_snapshot(device_id)
+    age = int(datetime.now().timestamp()) - int(snapshot.get("received_at") or 0)
+    if (not 0 <= age <= config.DEVICE_RUNTIME_TTL_SECONDS
+        or snapshot.get("clock_valid") is not True or snapshot.get("stop_latched") is not False
+        or snapshot.get("manual_active") is not False
+        or (snapshot.get("capabilities") or {}).get("cloud_vibration_test") is not True):
+        raise HTTPException(status_code=409, detail="VIBRATION_TEST_UNAVAILABLE")
+    session_id = snapshot.get("session_id")
+    if not isinstance(session_id, str) or not session_id:
+        raise HTTPException(status_code=409, detail="VIBRATION_TEST_UNAVAILABLE")
+    identity = hashlib.sha256(body.request_id.encode()).hexdigest()[:24]
+    command = create_device_command(device_id=device_id, command_type="vibration_test",
+        payload={"session_id": session_id}, idempotency_key=f"vibration-test:{device_id}:{identity}", ttl_seconds=5)
+    return dispatch_response(command)
 
 
 @router.post("/device/{device_id}/runtime/snapshot")
@@ -255,20 +292,23 @@ def create_sound_command(
     patch = {key: value for key, value in body.patch.items() if key in allowed}
     if not patch:
         raise HTTPException(status_code=400, detail="EMPTY_SOUND_COMMAND")
-    if "volume" in patch and not 0 <= int(patch["volume"]) <= 100:
+    if "playing" in patch and type(patch["playing"]) is not bool:
+        raise HTTPException(status_code=400, detail="INVALID_SOUND_STATE")
+    if "volume" in patch and (type(patch["volume"]) is not int or not 0 <= patch["volume"] <= 100):
         raise HTTPException(status_code=400, detail="INVALID_SOUND_VOLUME")
-    if "scene" in patch and patch["scene"] not in {"sleep", "healing", "work", "reading"}:
+    if "scene" in patch and patch["scene"] not in ("sleep", "healing", "work", "reading"):
         raise HTTPException(status_code=400, detail="INVALID_SOUND_SCENE")
-    if "timer" in patch and patch["timer"] not in {15, 30, 60, "all-night"}:
+    if "timer" in patch and patch["timer"] not in (15, 30, 60, "all-night"):
         raise HTTPException(status_code=400, detail="INVALID_SOUND_TIMER")
-    desired = {**get_sound_state(device_id), **patch}
+    current = {**get_sound_state(device_id), **patch}
+    desired = {key: current[key] for key in ("playing", "volume", "scene", "timer")}
     command = create_device_command(
         device_id=device_id,
         command_type="set_sound",
         payload={"patch": patch, "sound": desired},
-        ttl_seconds=60,
+        ttl_seconds=10,
     )
-    return {"status": command["status"], "command": command}
+    return dispatch_response(command)
 
 
 @router.post("/device/{device_id}/light-command")
@@ -282,18 +322,25 @@ def create_light_command(
     patch = {key: value for key, value in body.patch.items() if key in allowed}
     if not patch:
         raise HTTPException(status_code=400, detail="EMPTY_LIGHT_COMMAND")
-    if "brightness" in patch and not 5 <= int(patch["brightness"]) <= 40:
+    if "enabled" in patch and type(patch["enabled"]) is not bool:
+        raise HTTPException(status_code=400, detail="INVALID_LIGHT_STATE")
+    if "brightness" in patch and (type(patch["brightness"]) is not int or not 5 <= patch["brightness"] <= 40):
         raise HTTPException(status_code=400, detail="INVALID_LIGHT_BRIGHTNESS")
-    if "color" in patch and patch["color"] not in {"amber", "warm-amber", "warm-yellow"}:
+    if "mode" in patch and patch["mode"] not in ("night-low", "bedtime-breathe"):
+        raise HTTPException(status_code=400, detail="INVALID_LIGHT_MODE")
+    if "color" in patch and patch["color"] not in ("amber", "warm-amber", "warm-yellow"):
         raise HTTPException(status_code=400, detail="INVALID_LIGHT_COLOR")
-    desired = {**get_light_state(device_id), **patch}
+    if "color" in patch:
+        patch["color"] = "amber"
+    current = {**get_light_state(device_id), **patch}
+    desired = {key: current[key] for key in ("enabled", "mode", "brightness", "color")}
     command = create_device_command(
         device_id=device_id,
         command_type="set_light",
         payload={"patch": patch, "light": desired},
-        ttl_seconds=60,
+        ttl_seconds=10,
     )
-    return {"status": command["status"], "command": command}
+    return dispatch_response(command)
 
 
 @router.get("/device/{device_id}/commands/{command_id}")
@@ -354,4 +401,4 @@ def request_intervention_stop(
     )
     if command["status"] in {"expired", "failed", "rejected", "readback-mismatch"}:
         command = requeue_device_command(device_id, command["command_id"], ttl_seconds=60)
-    return stop_response(command)
+    return dispatch_response(command)

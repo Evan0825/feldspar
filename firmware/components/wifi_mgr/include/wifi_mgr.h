@@ -31,19 +31,19 @@ extern "C" {
 /* 初始化 netif + WiFi STA；若 NVS 有已存凭据则自动重连 */
 esp_err_t wifi_mgr_init(void);
 
-/* 保存凭据到 NVS 并连接指定 AP（SSID 1-32B；密码可空表示开放网络，8-63B）
- * 成功返回 ESP_OK（异步连接，实际结果经状态回调上报） */
+/* 保存凭据到 NVS 并连接指定 AP（SSID 1-32B；密码可空表示开放网络，8-63B）。
+ * 成功返回 ESP_OK（异步连接，实际结果经状态回调上报）。扫描期间需等待扫描结束再配网。 */
 esp_err_t wifi_mgr_connect(const char *ssid, const char *pass);
 
 /* 清除已存凭据并断开 WiFi */
 void wifi_mgr_forget(void);
 
-/* 触发一次附近 AP 扫描（异步，非阻塞）。
+/* 提交一次附近 AP 扫描（异步，非阻塞）。正在连接时等本次连接尝试结束后扫描。
  * 结果经状态回调逐行上报：WIFI,SCANNING / WIFI,AP,... / WIFI,SCANEND,<n>。
  * 已在扫描中或 WiFi 未初始化时返回错误。 */
 esp_err_t wifi_mgr_scan_start(void);
 
-/* 是否有扫描正在进行（防止重复触发） */
+/* 是否有待处理或正在进行的扫描 */
 bool wifi_mgr_scan_running(void);
 
 /* 当前是否已连接并获得 IP（网络 OTA 触发的前置条件检查）。 */

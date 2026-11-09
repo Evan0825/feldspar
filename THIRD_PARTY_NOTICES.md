@@ -50,4 +50,4 @@ ESP-IDF 5.4.1 及其组件、工具链按 Espressif 和各上游许可使用，�
 
 ## 原生界面图标（2026-10-28）
 
-`firmware/miniprogram-latest/images/ui/*.png` 从 lucide-react 1.37.0 图标栅格化；ISC 许可见 `licenses/lucide-ui-LICENSE`。UI 资产来源见 `docs/design/ui-assets.md`。
+Lucide 图标的 ISC 许可见 `licenses/lucide-ui-LICENSE`。Material Icons 的 Apache-2.0 许可见 `firmware/miniprogram-latest/images/ui/LICENSE-Material-Icons.txt`。UI 资产来源见 `docs/design/ui-assets.md`。

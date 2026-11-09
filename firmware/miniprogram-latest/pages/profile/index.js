@@ -85,7 +85,7 @@ Page({
           : '关闭后 AI 将停止读取新的睡眠资料；已生成的结构化报告仍会保留。',
         confirmText: enabled ? '允许' : '确认关闭',
         cancelText: '取消',
-        confirmColor: enabled ? '#C97810' : '#A45237',
+        confirmColor: enabled ? '#654617' : '#A13F31',
         success: resolve,
         fail: reject,
       }))
@@ -119,7 +119,7 @@ Page({
           : '关闭后停止新的 MQTT 音频上传，月石本地规则守护仍继续运行。',
         confirmText: enabled ? '允许' : '确认关闭',
         cancelText: '取消',
-        confirmColor: enabled ? '#C97810' : '#A45237',
+        confirmColor: enabled ? '#654617' : '#A13F31',
         success: resolve,
         fail: reject,
       }))
@@ -145,7 +145,7 @@ Page({
     this._retryAction = () => this.unbind()
     this.setData({ syncing: true, actionError: null })
     try {
-      const result = await new Promise((resolve, reject) => wx.showModal({ title: '解绑设备', content: '解绑不会删除已归属到当前用户的历史报告。重新绑定后可继续查看。', confirmText: '确认解绑', confirmColor: '#A45237', success: resolve, fail: reject }))
+      const result = await new Promise((resolve, reject) => wx.showModal({ title: '解绑设备', content: '解绑不会删除已归属到当前用户的历史报告。重新绑定后可继续查看。', confirmText: '确认解绑', confirmColor: '#A13F31', success: resolve, fail: reject }))
       if (!result.confirm) {
         this._retryAction = null
         return

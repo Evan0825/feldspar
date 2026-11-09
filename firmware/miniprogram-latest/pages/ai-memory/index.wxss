@@ -1,0 +1,9 @@
+.memory-page { min-height: 0; padding: 50rpx 36rpx; }
+.memory-intro { display: block; font-size: 29rpx; color: var(--muted); line-height: 1.7; margin: 20rpx 0 44rpx; }
+.memory-card { background: var(--paper); border: 1rpx solid var(--border); border-radius: 30rpx; padding: 8rpx 28rpx; }
+.preference-row { display: flex; justify-content: space-between; gap: 20rpx; align-items: center; padding: 26rpx 0; }
+.preference-row + .preference-row { border-top: 1rpx solid var(--border); }
+.preference-row > view > text { display: block; font-size: 33rpx; line-height: 1.5; }
+.memory-menu { display: flex; justify-content: space-between; margin: 22rpx 0 0; padding: 29rpx; background: transparent; border: 1rpx solid var(--border); border-radius: 26rpx; font-size: 30rpx; line-height: 1.5; text-align: left; color: var(--ink); }
+.memory-menu text + text { color: #9b876e; }
+.memory-loading { display: block; margin: 35rpx 4rpx; color: var(--muted); font-size: 26rpx; line-height: 1.8; }

@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "月石",
+  "navigationBarTitleText": "",
   "usingComponents": {
     "state-banner": "/components/state-banner/index"
   }

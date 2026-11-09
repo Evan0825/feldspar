@@ -3,13 +3,11 @@
 对应时序图第 ⑤ 阶段
 """
 import json
-import uuid
 from datetime import datetime
 from app.database import (
-    get_conn, get_device_config, update_device_config, get_device,
+    get_conn, get_device,
     gen_id,
 )
-from app.agent.engine import weekly_adjustment
 from app.agent.safety import validate_agent_config
 
 
@@ -150,7 +148,6 @@ def generate_ai_candidate(device_id: str, weekly_stats: dict, current_config: di
     根据七晚统计，自动生成一个 AI 建议的候选配置
     （规则版，不依赖 LLM；LLM 版会补充更自然的 summary 文案）
     """
-    result = weekly_adjustment([], current_config)  # 用当前配置当基准
     # 用 weekly_stats 的成功率来驱动调整（简化版）
     new_cfg = dict(current_config)
     basis = []

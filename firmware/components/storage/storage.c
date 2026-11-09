@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include "esp_log.h"
+#include "sdkconfig.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_flash.h"
@@ -86,7 +87,8 @@ esp_err_t storage_init(void)
     ESP_LOGI(TAG, "chip id: 0x%06lX (W25Q64 应为 0xEF4017), size: %lu bytes (%lu MB)",
              (unsigned long)chip_id, (unsigned long)s_size, (unsigned long)(s_size >> 20));
 
-    /* 读写自检：用最后一个扇区（避免占用起始区，后续挂 FATFS 用头部） */
+#ifndef CONFIG_FELDSPAR_PRESERVE_EXISTING_STORAGE
+    /* 读写自检使用保留的最后一个扇区。 */
     uint32_t test_addr = s_size - SECTOR_SIZE;
     uint8_t wbuf[256];
     for (int i = 0; i < (int)sizeof(wbuf); i++) wbuf[i] = (uint8_t)(i * 7 + 0x5A);
@@ -101,6 +103,7 @@ esp_err_t storage_init(void)
     }
     ESP_LOGI(TAG, "read/write self test ok (%u bytes @0x%08lX)",
              (unsigned)sizeof(wbuf), (unsigned long)test_addr);
+#endif
 
     s_inited = true;
     ESP_LOGI(TAG, "storage init ok (CS=%d CLK=%d MOSI=%d MISO=%d)",
@@ -138,7 +141,11 @@ esp_err_t storage_mount_fatfs(void)
 
     wl_handle_t wl = WL_INVALID_HANDLE;
     esp_vfs_fat_mount_config_t cfg = {
+#ifdef CONFIG_FELDSPAR_PRESERVE_EXISTING_STORAGE
+        .format_if_mount_failed = false,
+#else
         .format_if_mount_failed = true,   /* 首次使用自动格式化 */
+#endif
         .max_files = 8,
         .allocation_unit_size = 4096,
     };

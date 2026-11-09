@@ -1,0 +1,17 @@
+<view class="page records-page">
+  <view class="records-toolbar" wx:if="{{!loading && !consentRequired}}"><button hover-class="none" class="new-conversation" bindtap="newChat">新建对话</button></view>
+  <view class="records-tabs"><button hover-class="none" class="{{tab === 'conversations' ? 'active' : ''}}" data-tab="conversations" bindtap="setTab">对话</button><button hover-class="none" class="{{tab === 'interpretations' ? 'active' : ''}}" data-tab="interpretations" bindtap="setTab">解读</button></view>
+  <view class="records-loading" wx:if="{{loading}}">正在读取记录</view>
+  <state-banner wx:if="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" bindretry="load" />
+  <view class="records-access" wx:if="{{!loading && consentRequired}}"><text>AI 授权已关闭，仍可查看本机对话。</text><button hover-class="none" class="ai-home-link" bindtap="openAuthorization">管理授权</button></view>
+  <view class="empty-records" wx:if="{{!loading && !error && !groups.length}}"><image src="/images/ai-ui/new-chat.png" mode="aspectFit" /><text>{{tab === 'conversations' ? '还没有对话' : '还没有解读'}}</text></view>
+  <view class="record-group" wx:for="{{groups}}" wx:key="label" wx:for-item="group">
+    <text class="group-label">{{group.label}}</text>
+    <view class="record-list"><view class="record-item" wx:for="{{group.items}}" wx:key="id" data-id="{{item.id}}" data-revision="{{item.revision}}" data-source-date="{{item.sourceDate}}" bindtap="openRecord" bindlongpress="deleteRecord">
+      <view class="record-meta"><text>{{item.timeLabel}}</text><text>{{item.kindLabel}}</text></view>
+      <view class="record-heading"><text>{{item.title}}</text><image src="/images/ai-ui/chevron-right.png" mode="aspectFit" /></view>
+      <text class="record-preview">{{item.preview}}</text>
+      <view class="record-foot"><text>{{item.sourceLabel ? '依据 ' + item.sourceLabel : ''}}</text><button hover-class="none" wx:if="{{tab === 'conversations'}}" class="record-delete" data-id="{{item.id}}" disabled="{{deleting}}" catchtap="deleteRecord">删除</button></view>
+    </view></view>
+  </view>
+</view>

@@ -42,7 +42,7 @@
   </view>
 
   <view class="failed-state" wx:else>
-    <view class="page-title">还需要调整</view>
+    <view class="page-title">{{result && result.canConfirmPad ? '确认振动片' : '自检未完成'}}</view>
 
     <image class="product-hero failed-hero" src="/images/system-compact.png" mode="aspectFit" />
 
@@ -56,6 +56,8 @@
     <view class="card error-card" wx:if="{{error && !result}}">
       <state-banner tone="danger" title="{{error.title}}" detail="{{errorMessage}}" retryable="{{error.retryable}}" action="{{error.action}}" bindretry="retry" bindaction="handleServiceAction" />
     </view>
-    <button hover-class="none" class="primary-button retry-button" bindtap="retry">调整后重试</button>
+    <button wx:if="{{result && result.canConfirmPad}}" hover-class="none" class="primary-button retry-button" loading="{{completing}}" disabled="{{completing}}" bindtap="confirmPad">确认振动并继续</button>
+    <button hover-class="none" class="{{result && result.canConfirmPad ? 'secondary-button' : 'primary-button'}} retry-button" disabled="{{completing}}" bindtap="retry">重试自检</button>
+    <button wx:if="{{result && result.canViewDevice && !result.canConfirmPad}}" hover-class="none" class="secondary-button retry-button" bindtap="viewDevice">查看设备</button>
   </view>
 </view>

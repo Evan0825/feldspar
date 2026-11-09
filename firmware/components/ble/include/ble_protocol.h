@@ -18,6 +18,7 @@ extern "C" {
 typedef enum {
     BLE_CMD_LIGHT_LEVEL  = 0x01,   /* 灯光亮度：params[0]=0-100（三通道同值白光） */
     BLE_CMD_LIGHT_RGB    = 0x09,   /* RGB 灯带颜色：params[0..2]=r/g/b 各 0-100 */
+    BLE_CMD_LIGHT_BREATHE = 0x0B,  /* 手动呼吸灯：params[0..2]=峰值 RGB */
     BLE_CMD_MOTOR_SPEED  = 0x02,   /* 电机速度：params[0]=int8 -100..100 */
     BLE_CMD_MOTOR_STOP   = 0x03,   /* 电机停止 */
     BLE_CMD_AUDIO_PLAY   = 0x04,   /* 开始播放 */
@@ -39,6 +40,8 @@ typedef enum {
     BLE_CMD_SFX_DELETE   = 0x33,   /* 删除音效：[index u8] */
     BLE_CMD_SFX_LIST     = 0x34,   /* 查询音效列表（结果经 0xFF04 下发） */
     BLE_CMD_SFX_AUTO     = 0x35,   /* 自动轮播开关：[0/1] */
+
+    BLE_CMD_SFX_TIMER    = 0x36,   /* 当前音效的定时分钟数，0 取消，IO 状态回读 */
 
     /* ---- WiFi 管理（0x41-0x44，配合 0xFF04 状态上报）---- */
     BLE_CMD_WIFI_CONFIG  = 0x41,   /* 配置并连接：[ssid_len][ssid..][pwd_len][pwd..]，存 NVS 并连接 */

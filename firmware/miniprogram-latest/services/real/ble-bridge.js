@@ -256,7 +256,14 @@ function createWxBleBridge(config = {}) {
       if (error && error.code) throw error
     }
     if (platform !== 'android' || typeof wx.getSetting !== 'function' || typeof wx.authorize !== 'function') return
-    const settings = await callWx('getSetting', {}, 2000)
+    let settings
+    try {
+      settings = await callWx('getSetting', {}, 2000)
+    } catch (error) {
+      // The native scan still enforces permissions if WeChat cannot read settings.
+      if (error.code === 'PROVISION_TIMEOUT') return
+      throw error
+    }
     const locationPermission = settings.authSetting && settings.authSetting['scope.userLocation']
     if (locationPermission === false) {
       throw bridgeError('BLUETOOTH_PERMISSION_DENIED', '请在小程序设置中允许位置信息权限')
@@ -367,22 +374,23 @@ function createWxBleBridge(config = {}) {
 
   async function negotiateMtu(state) {
     state.mtu = BLE_PROTOCOL.fallbackMtu
-    if (typeof wx.setBLEMTU !== 'function') return
-    try {
-      const result = await callWx('setBLEMTU', {
-        deviceId: state.transportDeviceId,
-        mtu: BLE_PROTOCOL.requestedMtu,
-      }, 3000)
-      if (Number(result.mtu) >= BLE_PROTOCOL.fallbackMtu) state.mtu = Number(result.mtu)
-    } catch (error) {
-      state.mtuNegotiationError = error.code || 'MTU_NEGOTIATION_FAILED'
-      return
+    if (typeof wx.setBLEMTU === 'function') {
+      try {
+        const result = await callWx('setBLEMTU', {
+          deviceId: state.transportDeviceId,
+          mtu: BLE_PROTOCOL.requestedMtu,
+        }, 3000)
+        if (Number(result.mtu) >= BLE_PROTOCOL.fallbackMtu) state.mtu = Number(result.mtu)
+      } catch (error) {
+        state.mtuNegotiationError = error.code || 'MTU_NEGOTIATION_FAILED'
+      }
     }
     if (typeof wx.getBLEMTU !== 'function') return
     try {
       const result = await callWx('getBLEMTU', {
         deviceId: state.transportDeviceId,
-        writeType: 'write',
+        // Use the single-packet limit on iOS. Legacy FF01 cannot reassemble long writes.
+        writeType: 'writeNoResponse',
       }, 2000)
       if (Number(result.mtu) >= BLE_PROTOCOL.fallbackMtu) state.mtu = Number(result.mtu)
     } catch (error) {
@@ -595,11 +603,11 @@ function createWxBleBridge(config = {}) {
     })
   }
 
-  async function controlWithReply(deviceId, bytes, acceptedTypes, timeout = RESPONSE_TIMEOUT) {
+  async function controlWithReply(deviceId, bytes, acceptedTypes, timeout = RESPONSE_TIMEOUT, matches = () => true) {
     const state = await ensureConnected(deviceId)
     const response = waitForMessage(
       state,
-      (message) => message.channel === 'data' && acceptedTypes.includes(message.type),
+      (message) => message.channel === 'data' && acceptedTypes.includes(message.type) && matches(message),
       timeout,
       `等待 ${acceptedTypes.join('/')} 超时`,
     )
@@ -646,7 +654,7 @@ function createWxBleBridge(config = {}) {
     const response = waitForMessage(state, message => message.channel === 'data' &&
       parseIoReply(message, token) !== null, RESPONSE_TIMEOUT, '设备未提供控制回读')
     try {
-      await writeBytes(state, state.controlId, buildControlCommand(COMMANDS.IO_STATE, [token & 255, token >> 8]))
+      await writeBytes(state, state.controlId, buildControlCommand(COMMANDS.IO_STATE, [token & 255, token >> 8, 1, 1]))
     } catch (error) {
       for (const reject of Array.from(state.disconnectRejectors)) reject(error)
       await response.catch(() => {})
@@ -727,10 +735,10 @@ function createWxBleBridge(config = {}) {
     return result
   }
 
-  async function playSfx(deviceId, index) {
+  async function playSfx(deviceId, index, timer = 0) {
     const response = await controlWithReply(
       deviceId,
-      buildControlCommand(COMMANDS.SFX_PLAY, [Number(index) & 0xff]),
+      buildControlCommand(COMMANDS.SFX_PLAY, timer ? [Number(index) & 0xff, timer] : [Number(index) & 0xff]),
       ['PLAYCMD', 'PLAYERR'],
     )
     if (response.type === 'PLAYERR') throw bridgeError('SFX_PLAY_FAILED', `设备无法播放音效 ${index}`)
@@ -852,6 +860,7 @@ function createWxBleBridge(config = {}) {
       buildControlCommand(COMMANDS.WIFI_STATE),
       ['WIFI'],
       4000,
+      (message) => ['OFF', 'IDLE', 'CONNECTED'].includes(message.fields[0]),
     )
     const sub = String(response.fields[0] || '').toUpperCase()
     if (sub === 'CONNECTED') {
@@ -860,8 +869,8 @@ function createWxBleBridge(config = {}) {
         connected: true,
         configured: true,
         deviceKeyPresent: false,
-        ssid: String(response.fields[1] || ''),
-        ip: String(response.fields[2] || ''),
+        ssid: response.fields.slice(1, -1).join(','),
+        ip: String(response.fields[response.fields.length - 1] || ''),
         rssi: null,
       }
     }
@@ -871,7 +880,7 @@ function createWxBleBridge(config = {}) {
         connected: false,
         configured: true,
         deviceKeyPresent: false,
-        ssid: String(response.fields[1] || ''),
+        ssid: response.fields.slice(1).join(','),
         rssi: null,
       }
     }
@@ -918,8 +927,10 @@ function createWxBleBridge(config = {}) {
     if (command.byteLength > state.mtu - 3) {
       throw bridgeError('BLE_FRAME_TOO_LARGE', 'WiFi 名称或密码过长，单次 BLE 写入超出当前 MTU')
     }
+    const targetSsid = String(ssid).trim()
     const result = new Promise((resolve, reject) => {
       let timer = null
+      let lastRetryReason = ''
       const cleanup = () => {
         clearTimeout(timer)
         state.messageListeners.delete(onMessage)
@@ -937,29 +948,36 @@ function createWxBleBridge(config = {}) {
           return
         }
         if (sub === 'CONNECTED') {
+          const connectedSsid = message.fields.slice(1, -1).join(',')
+          const ip = String(message.fields[message.fields.length - 1] || '')
+          if (connectedSsid !== targetSsid || !ip || ip === '0.0.0.0') return
           cleanup()
-          resolve({
-            connected: true,
-            ssid: String(message.fields[1] || ssid),
-            ip: String(message.fields[2] || ''),
-          })
+          resolve({ connected: true, ssid: connectedSsid, ip })
           return
         }
         if (sub === 'ERR') {
-          cleanup()
           const reason = String(message.fields[1] || '').toLowerCase()
+          // Legacy firmware can report ESP_ERR_WIFI_CONN during a disconnect,
+          // then connect successfully when its automatic retry runs.
+          if (['connect', 'reconnect', '12295'].includes(reason)) {
+            lastRetryReason = reason
+            return
+          }
+          cleanup()
           const code = reason === 'badlen' ? 'WIFI_INVALID_DATA' : 'WIFI_CONNECT_FAILED'
           reject(bridgeError(code, message.raw))
           return
         }
-        if (sub === 'DISCONNECTED') {
-          cleanup()
-          reject(bridgeError('WIFI_CONNECT_FAILED', message.raw))
+        if (sub === 'DISCONNECTED' && message.fields.slice(1, -1).join(',') === targetSsid) {
+          const reason = message.fields[message.fields.length - 1]
+          if (/^\d+$/.test(reason)) lastRetryReason = reason
         }
       }
       timer = setTimeout(() => {
         cleanup()
-        reject(bridgeError('WIFI_CONNECT_TIMEOUT', '设备连接 Wi-Fi 超时，请确认密码与 2.4GHz 网络'))
+        const error = bridgeError('WIFI_CONNECT_TIMEOUT', '设备连接 Wi-Fi 超时，请确认密码与 2.4 GHz 网络')
+        if (lastRetryReason) error.wifiReason = lastRetryReason
+        reject(error)
       }, 25000)
       state.messageListeners.add(onMessage)
       state.disconnectRejectors.add(onDisconnect)
@@ -1084,10 +1102,13 @@ function createWxBleBridge(config = {}) {
   }
 
   async function applySound(deviceId, current, desired, patch = {}) {
-    if (Object.prototype.hasOwnProperty.call(patch, 'timer') && patch.timer !== 'all-night')
-      throw bridgeError('CONTROL_UNSUPPORTED', '当前固件尚未支持设备定时')
+    const timerChanged = Object.prototype.hasOwnProperty.call(patch, 'timer')
     const shouldStart = patch.playing === true || (patch.scene && current && current.playing)
-    if (shouldStart && desired.timer !== 'all-night') throw bridgeError('CONTROL_UNSUPPORTED', '请先选择整夜播放，当前固件尚未支持定时')
+    const minutes = [15, 30, 60].includes(desired.timer) ? desired.timer : 0
+    if ((timerChanged || shouldStart) && minutes && !current?.timerSupported) {
+      throw bridgeError('CONTROL_UNSUPPORTED', '当前固件尚未支持设备定时')
+    }
+    const adjustTimer = timerChanged && !shouldStart && patch.playing !== false && current?.timerSupported && (current.playing || current.paused)
     if (shouldStart || (Object.prototype.hasOwnProperty.call(patch, 'volume') && desired.volume > 0)) await requireManualControl(deviceId)
     let selectedIndex = 0
     if (shouldStart) {
@@ -1105,24 +1126,30 @@ function createWxBleBridge(config = {}) {
       applied.push('stop')
     }
     if (shouldStart) {
-      await playSfx(deviceId, selectedIndex)
+      await playSfx(deviceId, selectedIndex, minutes)
       applied.push(`sfx:${selectedIndex}`)
     }
+    if (adjustTimer) {
+      await sendControl(deviceId, buildControlCommand(COMMANDS.SFX_TIMER, [minutes]))
+      applied.push('timer')
+    }
     const readback = await confirmIo(deviceId, io =>
+      (!(adjustTimer || shouldStart && minutes) || io.sound.timer === (minutes || 'all-night') &&
+        (!minutes || io.sound.timerRemainingSeconds >= minutes * 60 - 3)) &&
       (!Object.prototype.hasOwnProperty.call(patch, 'volume') && !shouldStart || io.sound.volume === desired.volume) &&
       (patch.playing !== false || !io.sound.playing && !io.sound.paused) &&
       (!shouldStart || io.sound.playing && io.sound.index === selectedIndex))
     return { applied, confirmed: true, readback, transport: 'ble', protocolVersion: BLE_PROTOCOL.version }
   }
 
-  /* Keep the displayed control range; never stretch 40 to full output. */
+  /* Manual brightness maps directly to the selected percentage. */
   function brightnessFactor(brightness) {
-    const value = Math.max(5, Math.min(40, Number(brightness) || 15))
+    const value = Math.max(5, Math.min(100, Number(brightness) || 15))
     return value / 100
   }
 
   async function applyLight(deviceId, desired, patch = {}) {
-    if (desired.enabled && desired.mode !== 'night-low') throw bridgeError('CONTROL_UNSUPPORTED', '当前固件仅支持稳定夜灯')
+    const breathing = desired.enabled && desired.mode === 'bedtime-breathe'
     if (desired.enabled) await requireManualControl(deviceId)
     if (!Object.prototype.hasOwnProperty.call(patch, 'enabled')
       && !Object.prototype.hasOwnProperty.call(patch, 'brightness')
@@ -1140,9 +1167,15 @@ function createWxBleBridge(config = {}) {
       rgb = { r: scale(preset.r), g: scale(preset.g), b: scale(preset.b) }
       level = Math.round(factor * 100)
     }
-    await sendControl(deviceId, buildLightRgbCommand(rgb.r, rgb.g, rgb.b))
+    if (breathing && !(await readIo(deviceId)).light.mode)
+      throw bridgeError('CONTROL_UNSUPPORTED', '当前固件仅支持稳定夜灯')
+    const command = breathing
+      ? buildControlCommand(COMMANDS.LIGHT_BREATHE, [rgb.r, rgb.g, rgb.b])
+      : buildLightRgbCommand(rgb.r, rgb.g, rgb.b)
+    await sendControl(deviceId, command)
     const readback = await confirmIo(deviceId, io => io.light.enabled === Boolean(desired.enabled) &&
-      io.light.r === rgb.r && io.light.g === rgb.g && io.light.b === rgb.b)
+      io.light.r === rgb.r && io.light.g === rgb.g && io.light.b === rgb.b &&
+      (breathing ? io.light.mode === 'bedtime-breathe' : io.light.mode !== 'bedtime-breathe'))
     return {
       confirmed: true,
       readback,
@@ -1310,6 +1343,11 @@ function createWxBleBridge(config = {}) {
     provisionWifi,
     scanWifiNetworks,
     getWifiStatus,
+    async getFirmwareVersion(deviceId) {
+      const reply = await controlWithReply(deviceId, buildControlCommand(COMMANDS.OTA_QUERY), ['OTA'], 3000,
+        message => message.fields[0] === 'INFO' && Boolean(message.fields[1]))
+      return reply.fields[1]
+    },
     getStatus(deviceId) {
       const known = knownDevices.get(deviceId)
       const state = connections.get(deviceId)

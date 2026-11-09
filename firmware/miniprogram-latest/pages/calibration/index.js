@@ -33,7 +33,7 @@ Page({
       if (!marker) {
         this.setData({
           result: { ...result, ready: false },
-          failedChecks: (result.checks || []).filter((check) => !check.ready),
+          failedChecks: (result.checks || []).filter((check) => check.required !== false && !check.ready),
           phase: 'failed',
         })
         return
@@ -48,7 +48,7 @@ Page({
         status,
         settings,
         readiness,
-        failedChecks: readiness.checks.filter((check) => !check.ready),
+        failedChecks: readiness.checks.filter((check) => check.required !== false && !check.ready),
         phase: readiness.ready ? 'ready' : 'failed',
       })
     } catch (error) {
@@ -58,6 +58,28 @@ Page({
   },
 
   retry() { this.run() },
+  async confirmPad() {
+    const result = this.data.result
+    if (this.data.completing || !result?.canConfirmPad || !result.deviceId) return
+    this.setData({ completing: true })
+    try {
+      const current = await services.device.runCalibration()
+      if (current.canConfirmPad && current.deviceId === result.deviceId) {
+        wx.switchTab({ url: '/pages/home/index' })
+        return
+      }
+      this.setData({ result: null, failedChecks: [],
+        error: { title: '设备状态已变化' }, errorMessage: '请重新自检。' })
+    } catch (error) {
+      const userError = toUserError(error, '设备自检')
+      this.setData({ result: null, failedChecks: [], error: userError, errorMessage: userError.detail })
+    } finally {
+      this.setData({ completing: false })
+    }
+  },
+  viewDevice() {
+    if (this.data.result?.canViewDevice) wx.navigateTo({ url: '/pages/device/index' })
+  },
   handleServiceAction(event) { return runServiceErrorAction(event.detail.action, () => this.retry(), wx) },
 
   async refreshReadiness() {
@@ -71,7 +93,7 @@ Page({
         status,
         settings,
         readiness,
-        failedChecks: readiness.checks.filter((check) => !check.ready),
+        failedChecks: readiness.checks.filter((check) => check.required !== false && !check.ready),
         phase: readiness.ready ? 'ready' : 'failed',
         error: null,
         errorMessage: '',
@@ -91,7 +113,7 @@ Page({
       this.setData({
         status,
         readiness,
-        failedChecks: readiness.checks.filter((check) => !check.ready),
+        failedChecks: readiness.checks.filter((check) => check.required !== false && !check.ready),
         phase: readiness.ready ? 'ready' : 'failed',
       })
       if (!readiness.ready) return

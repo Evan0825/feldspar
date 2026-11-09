@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 
 from app.database import (
     get_conn, init_db, upsert_device, insert_event,
-    get_weekly_stats, get_recent_events,
 )
 from app.config import SEED_DEMO_DATA
 

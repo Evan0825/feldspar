@@ -53,7 +53,7 @@ Page({
       this.setData({ settings })
       this.applySnapshot(snapshot)
     } catch (error) {
-      this.setData({ error: toUserError(error, '实时守护') })
+      this.setData({ error: toUserError(error, '实时状态') })
     } finally {
       this.setData({ loading: false })
     }
@@ -74,7 +74,7 @@ Page({
     try {
       this.applySnapshot(await services.guardian.getSnapshot())
     } catch (error) {
-      this.setData({ error: toUserError(error, '实时守护') })
+      this.setData({ error: toUserError(error, '实时状态') })
     }
   },
   applySnapshot(snapshot) {

@@ -1,12 +1,13 @@
-<view class="page onboarding {{editingProfile ? 'preferences-page' : ''}}">
+<view class="page onboarding {{phase === 'login' ? 'login-page' : editingProfile ? 'preferences-page' : ''}}">
   <state-banner wx:if="{{error}}" tone="danger" title="{{error.title}}" detail="{{error.detail}}" retryable="{{error.retryable}}" action="{{error.action}}" bindaction="handleServiceAction" bindretry="handleServiceAction" />
 
   <block wx:if="{{phase === 'login'}}">
-    <view class="moon-mark"><view class="moon-glow"></view></view>
-    <view class="page-title">登录</view>
-    <view class="page-lead">登录后保存设备与睡眠记录。</view>
-    <button hover-class="none" class="primary-button login-button" loading="{{loading}}" disabled="{{submitting}}" bindtap="login">微信登录并继续</button>
-
+    <view class="login-panel">
+      <text class="login-heading" role="heading">月石-feldspar</text>
+      <image class="product-visual" src="/images/system-hero.png" mode="aspectFit" aria-label="月石床头主机与枕下振动片" />
+      <text class="login-vision">让科技温暖每一个夜晚</text>
+      <button hover-class="none" class="primary-button login-button" loading="{{loading}}" disabled="{{submitting}}" bindtap="login">微信登录</button>
+    </view>
   </block>
 
   <block wx:elif="{{phase === 'profile'}}">
@@ -24,7 +25,7 @@
       </view>
       <view class="preferences-heading"><text>提醒方案</text><button hover-class="none" class="help-button" aria-label="了解提醒方案" bindtap="explainReminderPreferences"><image src="/images/ui/info.png" mode="aspectFit" /></button></view>
       <view class="reminder-options">
-        <view class="fixed-reminder"><image src="/images/ui/sound.png" mode="aspectFit" /><text>振动提醒</text><text>默认</text></view>
+        <view class="fixed-reminder"><image src="/images/ui/vibration.png" mode="aspectFit" /><text>振动提醒</text><text>默认</text></view>
         <view class="reminder-option {{submitting ? 'disabled' : ''}}" role="checkbox" aria-checked="{{!excludeSoundReminder}}" data-key="excludeSoundReminder" bindtap="toggleReminderExclusion"><view class="check-box {{!excludeSoundReminder ? 'checked' : ''}}"><image wx:if="{{!excludeSoundReminder}}" src="/images/ui/check.png" /></view><text>声音提醒</text></view>
         <view class="reminder-option {{submitting ? 'disabled' : ''}}" role="checkbox" aria-checked="{{!excludeLightReminder}}" data-key="excludeLightReminder" bindtap="toggleReminderExclusion"><view class="check-box {{!excludeLightReminder ? 'checked' : ''}}"><image wx:if="{{!excludeLightReminder}}" src="/images/ui/check.png" /></view><text>灯光提醒</text></view>
       </view>
@@ -36,9 +37,9 @@
     <view class="page-title">隐私与使用边界</view>
 
     <view class="card privacy-card">
-      <view class="privacy-row"><view><text>结构化事件上云</text><text>保存事件、摘要和趋势</text></view><switch color="#D28B2D" checked="{{privacy.structured}}" disabled="{{submitting}}" data-key="structured" bindchange="togglePrivacy" /></view>
-      <view class="privacy-row"><view><text>整夜原始录音默认不上云</text><text>不提供原始音频回放</text></view><switch color="#D28B2D" checked="{{privacy.rawAudio}}" disabled="{{submitting}}" data-key="rawAudio" bindchange="togglePrivacy" /></view>
-      <view class="privacy-row"><view><text>非医疗诊断</text><text>用于趋势观察与体位提醒</text></view><switch color="#D28B2D" checked="{{privacy.nonMedical}}" disabled="{{submitting}}" data-key="nonMedical" bindchange="togglePrivacy" /></view>
+      <view class="privacy-row"><view><text>结构化事件上云</text><text>保存事件、摘要和趋势</text></view><switch color="#F9C747" checked="{{privacy.structured}}" disabled="{{submitting}}" data-key="structured" bindchange="togglePrivacy" /></view>
+      <view class="privacy-row"><view><text>整夜原始录音默认不上云</text><text>不提供原始音频回放</text></view><switch color="#F9C747" checked="{{privacy.rawAudio}}" disabled="{{submitting}}" data-key="rawAudio" bindchange="togglePrivacy" /></view>
+      <view class="privacy-row"><view><text>非医疗诊断</text><text>用于趋势观察与体位提醒</text></view><switch color="#F9C747" checked="{{privacy.nonMedical}}" disabled="{{submitting}}" data-key="nonMedical" bindchange="togglePrivacy" /></view>
     </view>
     <button hover-class="none" class="primary-button" loading="{{submitting}}" disabled="{{submitting || !privacy.structured || !privacy.rawAudio || !privacy.nonMedical}}" bindtap="acceptPrivacy">同意并添加设备</button>
   </block>

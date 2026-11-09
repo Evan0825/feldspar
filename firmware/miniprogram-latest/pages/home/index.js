@@ -1,5 +1,5 @@
 const services = require('../../services/index')
-const { buildPersonalStrategy } = require('../../domain/personal-strategy')
+const { buildPersonalStrategy, confirmedPlan } = require('../../domain/personal-strategy')
 const { runServiceErrorAction, toUserError } = require('../../domain/service-error')
 const { buildDirectShare, buildTimelineShare } = require('../../domain/share-card')
 
@@ -9,6 +9,9 @@ Page({
     error: null,
     partialError: null,
     status: null,
+    deviceLinkLabel: '',
+    padNotice: '',
+    controlStatusPending: false,
     settings: null,
     strategy: null,
     strategyError: null,
@@ -46,11 +49,17 @@ Page({
     const preserveContent = Boolean(this.data.status)
     this.setData({ loading: !preserveContent, error: null, partialError: null })
     try {
+      const reconnect = services.serviceMode === 'real' && services.device.autoConnect
+        ? settle(Promise.resolve().then(() => services.device.autoConnect({ timeout: 4000, preferCloud: true })))
+        : Promise.resolve()
+      const deviceStatus = reconnect.then(() => services.device.getStatus())
       const results = await Promise.all([
-        services.device.getStatus(),
+        deviceStatus,
         services.device.getTonightSettings(),
-        services.device.getSoundState(),
-        services.device.getLightState(),
+        deviceStatus.then(status => !isControlStatusPending(status) || status.cloudSoundAvailable,
+          () => true).then(read => read ? services.device.getSoundState() : null),
+        deviceStatus.then(status => !isControlStatusPending(status) || status.cloudLightAvailable,
+          () => true).then(read => read ? services.device.getLightState() : null),
         services.guardian && services.guardian.getSnapshot ? services.guardian.getSnapshot() : Promise.resolve(null),
         services.device.getActiveSettingsCommand ? services.device.getActiveSettingsCommand() : Promise.resolve(null),
       ].map(settle))
@@ -58,8 +67,17 @@ Page({
       const [status, settings, sound, light, guardian, activeCommand] = results
       const firstFailure = results.find((result) => !result.ok)
       const criticalError = status.ok ? null : toUserError(status.error, '设备状态')
+      const nextStatus = status.ok ? status.value : this.data.status
+      const padNotice = {
+        disconnected: '枕下振动片未连接',
+        fault: '振动片故障',
+        unknown: '振动片状态待确认',
+      }[nextStatus?.pad?.status] || ''
       this.setData({
-        status: status.ok ? status.value : this.data.status,
+        status: nextStatus,
+        deviceLinkLabel: nextStatus?.cloudOnline ? '设备在线' : (nextStatus?.ble?.connected ? '蓝牙已连接' : (nextStatus?.host?.online ? '设备在线' : '设备离线')),
+        padNotice,
+        controlStatusPending: isControlStatusPending(nextStatus),
         settings: settings.ok ? settings.value : this.data.settings,
         sound: sound.ok ? sound.value : this.data.sound,
         light: light.ok ? light.value : this.data.light,
@@ -102,8 +120,8 @@ Page({
     this._strategyRequestId = requestId
     this.setData({ strategyLoading: !this.data.strategy, strategyError: null })
     try {
-      const [profile, nights] = await Promise.all([services.auth.getProfile(), services.reports.getSevenNightTrend()])
-      if (requestId === this._strategyRequestId) this.setData({ strategy: buildPersonalStrategy({ profile, nights, status: this.data.status, guardian: this.data.guardian, plan: this.data.settings && this.data.settings.personalStrategy }) })
+      const [profile, nights] = await Promise.all([services.auth.getProfile(), (services.reports.getCollectionNights || services.reports.getSevenNightTrend)()])
+      if (requestId === this._strategyRequestId) this.setData({ strategy: buildPersonalStrategy({ profile, nights, status: this.data.status, guardian: this.data.guardian, plan: confirmedPlan(this.data.settings, this.data.status?.deviceId, wx, services.serviceMode) }) })
     } catch (error) {
       if (requestId === this._strategyRequestId) this.setData({ strategyError: toUserError(error, '温和方案') })
     } finally {
@@ -125,17 +143,27 @@ Page({
     wx.navigateTo({ url: `/pages/ai-plan/index?commandId=${this.data.activeCommand.commandId}` })
   },
   openTonight() { if (this.canOpenControl()) wx.navigateTo({ url: '/pages/tonight/index' }) },
-  openSound() { if (this.canOpenControl()) wx.navigateTo({ url: '/pages/sound/index' }) },
-  openLight() { if (this.canOpenControl()) wx.navigateTo({ url: '/pages/light/index' }) },
+  openSound() { if (this.data.status?.cloudSoundAvailable || this.canOpenControl()) wx.navigateTo({ url: '/pages/sound/index' }) },
+  openLight() { if (this.data.status?.cloudLightAvailable || this.canOpenControl()) wx.navigateTo({ url: '/pages/light/index' }) },
   openReport() { wx.switchTab({ url: '/pages/report/index' }) },
   canOpenControl() {
+    const safety = this.data.status?.safety
+    if (safety?.available && safety.stopLatched) {
+      this.openDevice()
+      return false
+    }
     if (this.data.status && this.data.status.controlAvailable) return true
+    if (this.data.controlStatusPending) return false
     wx.showToast({ title: '设备离线或尚未配网，控制暂不可用', icon: 'none' })
     return false
   },
   onShareAppMessage() { return buildDirectShare() },
   onShareTimeline() { return buildTimelineShare() },
 })
+
+function isControlStatusPending(status) {
+  return Boolean(status?.ble?.connected && status.safety?.available === false && !status.controlAvailable)
+}
 
 async function settle(promise) {
   try {

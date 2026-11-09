@@ -1,12 +1,18 @@
 #include "lighting.h"
+#include "breath_pixel.h"
+#include "light_pulse.h"
 
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include "esp_log.h"
 #include "esp_check.h"
+#include "esp_timer.h"
 #include "driver/rmt_tx.h"
 #include "driver/rmt_encoder.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "haptic.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 
@@ -41,6 +47,7 @@ static rmt_channel_handle_t s_tx_chan = NULL;
 static rmt_encoder_handle_t s_encoder = NULL;
 static rmt_transmit_config_t s_tx_config = { .loop_count = 0 };
 static bool s_inited = false;
+static SemaphoreHandle_t s_lock;
 
 /* 当前 RGB（0-100）与开关状态；颜色/状态持久化到 NVS，上电自动恢复 */
 #define LIGHT_NVS_NS   "light"   /* NVS 命名空间（≤15 字符） */
@@ -52,6 +59,15 @@ static bool s_inited = false;
 
 static uint8_t s_r = 0, s_g = 0, s_b = 0;
 static bool s_on = false;
+static bool s_breathing;
+static light_pulse_t s_pulse;
+static uint64_t s_pulse_next_ms;
+static uint16_t s_rendered_level;
+
+#define PULSE_FRAME_MS 20
+#define PULSE_AMBER_R 255
+#define PULSE_AMBER_G 132
+#define PULSE_AMBER_B 34
 
 /* 灯珠像素缓冲：每灯珠 3 字节 */
 static uint8_t s_pixels[LIGHT_STRIP_NUM_LEDS * 3];
@@ -225,7 +241,13 @@ err:
 }
 
 /* 将当前状态（开关 + RGB 0-100）编码为像素并一次性下发到灯带；关闭时全黑 */
-static esp_err_t lighting_refresh(void)
+static uint8_t peak_rgb(uint8_t r, uint8_t g, uint8_t b)
+{
+    uint8_t peak = r > g ? r : g;
+    return peak > b ? peak : b;
+}
+
+static esp_err_t lighting_refresh(uint16_t pulse_level)
 {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
 
@@ -234,12 +256,23 @@ static esp_err_t lighting_refresh(void)
     uint8_t b8 = s_on ? (uint8_t)(s_b * 255 / 100) : 0;
 
     for (uint32_t i = 0; i < LIGHT_STRIP_NUM_LEDS; i++) {
-        PIXEL_SET(&s_pixels[i * 3], r8, g8, b8);
+        if (s_on && s_breathing) {
+            PIXEL_SET(&s_pixels[i * 3],
+                lighting_breath_pixel(PULSE_AMBER_R, pulse_level, i, LIGHT_STRIP_NUM_LEDS),
+                lighting_breath_pixel(PULSE_AMBER_G, pulse_level, i, LIGHT_STRIP_NUM_LEDS),
+                lighting_breath_pixel(PULSE_AMBER_B, pulse_level, i, LIGHT_STRIP_NUM_LEDS));
+        } else {
+            PIXEL_SET(&s_pixels[i * 3], r8, g8, b8);
+        }
     }
 
     esp_err_t err = rmt_transmit(s_tx_chan, s_encoder, s_pixels, sizeof(s_pixels), &s_tx_config);
     if (err != ESP_OK) return err;
-    return rmt_tx_wait_all_done(s_tx_chan, 100);
+    err = rmt_tx_wait_all_done(s_tx_chan, 100);
+    if (err == ESP_OK) {
+        s_rendered_level = !s_on ? 0 : (s_breathing ? pulse_level : peak_rgb(s_r, s_g, s_b) * 100);
+    }
+    return err;
 }
 
 esp_err_t lighting_init(void)
@@ -271,6 +304,8 @@ esp_err_t lighting_init(void)
         return err;
     }
 
+    s_lock = xSemaphoreCreateMutex();
+    if (!s_lock) return ESP_ERR_NO_MEM;
     s_inited = true;
 
     /* Remember color, but never emit light before the boot safety check. */
@@ -279,7 +314,7 @@ esp_err_t lighting_init(void)
     if (need_default) light_apply_default_warm();
     s_on = false;
     if (need_default) light_nvs_save();
-    err = lighting_refresh();
+    err = lighting_refresh(0);
     if (err != ESP_OK) return err;
 
     ESP_LOGI(TAG, "lighting init ok (WS2812B/SK6812, %u LEDs, gpio %d): %s rgb=%u,%u,%u",
@@ -290,71 +325,130 @@ esp_err_t lighting_init(void)
 
 void lighting_get_state(uint8_t *r, uint8_t *g, uint8_t *b, bool *enabled)
 {
+    lighting_get_output(r, g, b, enabled, NULL);
+}
+
+void lighting_get_output(uint8_t *r, uint8_t *g, uint8_t *b, bool *enabled, bool *breathing)
+{
+    if (s_lock) xSemaphoreTake(s_lock, portMAX_DELAY);
     if (r) *r=s_r;
     if (g) *g=s_g;
     if (b) *b=s_b;
     if (enabled) *enabled=s_on;
+    if (breathing) *breathing=s_breathing;
+    if (s_lock) xSemaphoreGive(s_lock);
+}
+
+void lighting_tick(uint64_t now_ms)
+{
+    if (!s_lock || xSemaphoreTake(s_lock, 0) != pdTRUE) return;
+    if (s_breathing && now_ms >= s_pulse_next_ms) {
+        s_pulse_next_ms = now_ms + PULSE_FRAME_MS;
+        bool done;
+        uint16_t level = light_pulse_level(&s_pulse, now_ms, &done);
+        if (done) s_on = s_breathing = false;
+        if (lighting_refresh(level) != ESP_OK) {
+            s_on = s_breathing = false;
+            lighting_refresh(0);
+        }
+    }
+    xSemaphoreGive(s_lock);
+}
+
+static esp_err_t lighting_set_color(uint8_t r, uint8_t g, uint8_t b, bool breathing)
+{
+    if (!s_lock) return ESP_ERR_INVALID_STATE;
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    if ((r || g || b) && haptic_stop_latched()) {
+        xSemaphoreGive(s_lock);
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (r > 100) r = 100;
+    if (g > 100) g = 100;
+    if (b > 100) b = 100;
+    uint8_t peak = peak_rgb(r, g, b);
+    if (breathing) {
+        r = peak;
+        g = (peak * PULSE_AMBER_G + 127) / 255;
+        b = (peak * PULSE_AMBER_B + 127) / 255;
+    }
+    s_r = r; s_g = g; s_b = b;
+    s_on = (r | g | b) != 0;   /* 全 0 视为熄灯 */
+    s_breathing = breathing && s_on;
+    if (s_breathing) {
+        uint64_t now_ms = (uint64_t)esp_timer_get_time() / 1000;
+        s_pulse = (light_pulse_t){ .started_ms = now_ms, .from = s_rendered_level, .peak = peak * 100 };
+        s_pulse_next_ms = now_ms + PULSE_FRAME_MS;
+    }
+    esp_err_t err = lighting_refresh(s_rendered_level);
+    if (s_breathing && err != ESP_OK) {
+        s_on = s_breathing = false;
+        lighting_refresh(0);
+    }
+    light_nvs_save();          /* 记忆颜色，重启自动恢复 */
+    xSemaphoreGive(s_lock);
+    return err;
 }
 
 esp_err_t lighting_set_level(uint8_t level)
 {
-    if (level > 100) level = 100;
-    s_r = s_g = s_b = level;
-    s_on = (level > 0);
-    esp_err_t err = lighting_refresh();
-    light_nvs_save();
-    return err;
+    return lighting_set_color(level, level, level, false);
 }
 
 esp_err_t lighting_set_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
-    if (r > 100) r = 100;
-    if (g > 100) g = 100;
-    if (b > 100) b = 100;
-    s_r = r; s_g = g; s_b = b;
-    s_on = (r | g | b) != 0;   /* 全 0 视为熄灯 */
-    esp_err_t err = lighting_refresh();
-    light_nvs_save();          /* 记忆颜色，重启自动恢复 */
-    return err;
+    return lighting_set_color(r, g, b, false);
+}
+
+esp_err_t lighting_set_breathing(uint8_t r, uint8_t g, uint8_t b)
+{
+    return lighting_set_color(r, g, b, true);
 }
 
 /* 物理按键调用：切换灯带整体亮灭，返回切换后的状态（true=亮）。
  * 开灯时若记忆颜色为空（如从未选色），自动套用默认暖色调，保证首次按键即亮。 */
+static esp_err_t lighting_set_enabled_locked(bool enabled)
+{
+    s_on = enabled;
+    s_breathing = false;
+    if (s_on && (s_r | s_g | s_b) == 0) light_apply_default_warm();
+    esp_err_t err = lighting_refresh(0);
+    light_nvs_save();
+    return err;
+}
+
 esp_err_t lighting_set_enabled(bool enabled)
 {
-    if (!s_inited) return ESP_ERR_INVALID_STATE;
-    s_on = enabled;
-    if (s_on && (s_r | s_g | s_b) == 0) light_apply_default_warm();
-    esp_err_t err = lighting_refresh();
-    light_nvs_save();
+    if (!s_lock) return ESP_ERR_INVALID_STATE;
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    esp_err_t err = lighting_set_enabled_locked(enabled);
+    xSemaphoreGive(s_lock);
     return err;
 }
 
 bool lighting_toggle(void)
 {
-    if (!s_inited) return false;
-    s_on = !s_on;
-    if (s_on && (s_r | s_g | s_b) == 0) {
-        light_apply_default_warm();
-        ESP_LOGI(TAG, "turn on with default warm rgb=%u,%u,%u",
-                 (unsigned)s_r, (unsigned)s_g, (unsigned)s_b);
-    }
-    lighting_refresh();
-    light_nvs_save();
-    ESP_LOGI(TAG, "light %s (rgb=%u,%u,%u)", s_on ? "ON" : "OFF",
-             (unsigned)s_r, (unsigned)s_g, (unsigned)s_b);
-    return s_on;
+    if (!s_lock) return false;
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    bool enabled = !s_on;
+    lighting_set_enabled_locked(enabled);
+    xSemaphoreGive(s_lock);
+    return enabled;
 }
 
 esp_err_t lighting_set_channel(uint8_t channel, uint8_t pct)
 {
     if (pct > 100) pct = 100;
+    if (channel > 2) return ESP_ERR_INVALID_ARG;
+    if (!s_lock) return ESP_ERR_INVALID_STATE;
+    xSemaphoreTake(s_lock, portMAX_DELAY);
     if (channel == 0)      s_r = pct;
     else if (channel == 1) s_g = pct;
     else if (channel == 2) s_b = pct;
-    else return ESP_ERR_INVALID_ARG;
     s_on = (s_r | s_g | s_b) != 0;
-    esp_err_t err = lighting_refresh();
+    s_breathing = false;
+    esp_err_t err = lighting_refresh(0);
     light_nvs_save();
+    xSemaphoreGive(s_lock);
     return err;
 }

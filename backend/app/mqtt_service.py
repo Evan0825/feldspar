@@ -307,6 +307,8 @@ class ExternalAudioModelClient:
             "temperature": 0,
             "max_tokens": 128,
         }
+        if config.LLM_PROVIDER == "volcengine-ark-standard":
+            payload["thinking"] = {"type": "disabled"}
         url = config.AUDIO_MODEL_URL.rstrip("/")
         if not url.endswith("/chat/completions"):
             url += "/chat/completions"
@@ -866,6 +868,14 @@ class MqttRealtimeService:
                 state = AudioBufferState(session_id=session_id, detector=RuleBasedSnoreDetector(sr=sample_rate))
                 self._audio_buffers[device_id] = state
                 reset_reason = "session_reset"
+            elif state.last_sequence >= 0 and sequence <= state.last_sequence:
+                return {
+                    "status": "duplicate",
+                    "kind": "audio",
+                    "device_id": device_id,
+                    "session_id": session_id,
+                    "sequence": sequence,
+                }
             elif state.last_sequence >= 0 and sequence != state.last_sequence + 1:
                 state = AudioBufferState(session_id=session_id, detector=RuleBasedSnoreDetector(sr=sample_rate))
                 self._audio_buffers[device_id] = state

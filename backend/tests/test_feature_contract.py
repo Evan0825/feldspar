@@ -108,6 +108,41 @@ class FeatureIngressTests(unittest.TestCase):
         self.now = 1000000+sequence*1000
         return self.service.ingest_message(device_topic("test", "features", "up"), json.dumps(packet(sequence)).encode())
 
+    def test_cloud_manual_outputs_are_bounded_and_require_device_readback(self):
+        from datetime import datetime
+        app = FastAPI()
+        app.include_router(device_runtime.router)
+        with TestClient(app) as client, patch.object(device_runtime, "require_user_device_access"), \
+                patch("app.mqtt_service.get_mqtt_service", return_value=self.service), \
+                patch.object(self.service, "publish_command", return_value=True) as publish, \
+                patch.object(device_runtime, "datetime") as clock:
+            clock.now.return_value = datetime.fromtimestamp(self.now // 1000)
+            base = "/api/v1/device/test"
+            self.assertEqual(client.post(f"{base}/vibration-test", json={"request_id": "trial"}).status_code, 409)
+            database.save_runtime_snapshot("test", {"session_id": "boot-a", "sequence": 1,
+                "stop_latched": False, "clock_valid": True, "manual_active": False,
+                "capabilities": {"cloud_vibration_test": True}})
+            trial = client.post(f"{base}/vibration-test", json={"request_id": "trial"}).json()["command"]
+            duplicate = client.post(f"{base}/vibration-test", json={"request_id": "trial"}).json()["command"]
+            self.assertEqual(duplicate["command_id"], trial["command_id"])
+            self.assertEqual(trial["payload"], {"session_id": "boot-a"})
+            self.assertEqual(trial["expires_at"] - trial["created_at"], 5)
+            ack = {"command_id": trial["command_id"], "status": "applied", "readback": {}}
+            rejected = self.service.ingest_message(device_topic("test", "acks", "up"), json.dumps(ack).encode())
+            self.assertEqual(rejected["command"]["status"], "readback-mismatch")
+            light = client.post(f"{base}/light-command", json={"patch": {"enabled": True, "color": "warm-amber"}})
+            self.assertEqual(light.status_code, 200, light.text)
+            lamp = light.json()["command"]
+            self.assertEqual(lamp["payload"]["light"]["color"], "amber")
+            self.assertEqual(set(lamp["payload"]["light"]), {"enabled", "mode", "brightness", "color"})
+            sound = client.post(f"{base}/sound-command", json={"patch": {"playing": True, "timer": 15}})
+            self.assertEqual(sound.status_code, 200, sound.text)
+            track = sound.json()["command"]
+            envelope, encoded = self.service.build_device_command_envelope(track)
+            self.assertEqual(envelope["type"], "set_sound")
+            self.assertLess(len(encoded), 480)
+            self.assertEqual(publish.call_count, 4)
+
     def test_mqtt_keeps_only_latest_window_without_fabricating_report_or_runtime(self):
         self.assertIn(device_topic("test", "features", "up"), allowed_device_publish_topics("test"))
         first = self.send(1)
@@ -137,7 +172,7 @@ class FeatureIngressTests(unittest.TestCase):
             link = ROOT/"firmware/components/device_link"
             includes = [ROOT/"tests/esp_stubs", ROOT/"tests/vendor/cJSON",
                 *[ROOT/f"firmware/components/{name}/include" for name in
-                  ("device_link", "acoustic_features", "haptic", "actuation_guard", "mqtt_mgr", "device_control")]]
+                  ("device_link", "acoustic_features", "haptic", "actuation_guard", "mqtt_mgr", "device_control", "lighting", "audio", "sfx")]]
             subprocess.run(["clang", "-std=c11", "-Wno-deprecated-declarations",
                 *[flag for path in includes for flag in ("-I", str(path))],
                 str(ROOT/"tests/device_link_test.c"), str(link/"link_frames.c"),

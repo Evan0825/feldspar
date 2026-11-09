@@ -44,14 +44,14 @@
 
 .status-list {
   margin-top: 8rpx;
-  border-top: 1rpx solid rgba(137, 111, 82, .16);
+  border-top: 1rpx solid var(--border);
 }
 
 .status-row {
   display: flex;
   align-items: center;
   min-height: 108rpx;
-  border-bottom: 1rpx solid rgba(137, 111, 82, .16);
+  border-bottom: 1rpx solid var(--border);
 }
 
 .status-icon {
@@ -64,13 +64,13 @@
 
 .status-label {
   flex: 1;
-  color: #2f2923;
+  color: var(--ink);
   font-size: 28rpx;
   font-weight: 500;
 }
 
 .status-value {
-  color: #536c2d;
+  color: var(--success);
   font-size: 27rpx;
   font-weight: 600;
 }
@@ -83,11 +83,11 @@
   min-height: 104rpx;
   margin: 18rpx 0 0;
   padding: 0;
-  border-top: 1rpx solid rgba(137, 111, 82, .16);
-  border-bottom: 1rpx solid rgba(137, 111, 82, .16);
+  border-top: 1rpx solid var(--border);
+  border-bottom: 1rpx solid var(--border);
   border-radius: 0;
   background: transparent;
-  color: #2f2923;
+  color: var(--ink);
   font-size: 24rpx;
   line-height: 1.3;
 }
@@ -98,12 +98,12 @@
 
 .settings-summary {
   margin-left: 22rpx;
-  color: #675d53;
+  color: var(--muted);
   text-align: left;
 }
 
 .settings-action {
-  color: #a76522;
+  color: var(--amber-deep);
   font-weight: 600;
 }
 
@@ -116,7 +116,7 @@
 
 .local-note,
 .checking-copy {
-  color: #8f8377;
+  color: var(--muted);
   font-size: 21rpx;
   text-align: center;
 }
@@ -146,12 +146,12 @@
 }
 
 .failed-list {
-  border-top: 1rpx solid rgba(137, 111, 82, .16);
+  border-top: 1rpx solid var(--border);
 }
 
 .failed-row {
   padding: 24rpx 0;
-  border-bottom: 1rpx solid rgba(137, 111, 82, .16);
+  border-bottom: 1rpx solid var(--border);
 }
 
 .failed-label,
@@ -160,14 +160,14 @@
 }
 
 .failed-label {
-  color: #2f2923;
+  color: var(--ink);
   font-size: 25rpx;
   font-weight: 600;
 }
 
 .failed-detail {
   margin-top: 8rpx;
-  color: #675d53;
+  color: var(--muted);
   font-size: 21rpx;
   line-height: 1.55;
 }

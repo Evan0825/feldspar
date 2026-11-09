@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include "esp_err.h"
 
@@ -38,6 +39,9 @@ esp_err_t audio_flush(void);
 /* 将一段 PCM 数据推入环形缓冲（由 BLE 音频数据特征回调调用）。
  * 仅播放中接受数据；len 为 2 的倍数，否则返回 ESP_ERR_INVALID_ARG。 */
 esp_err_t audio_feed(const uint8_t *pcm, size_t len);
+
+/* EOF 后查询环形缓冲或 I2S DMA 是否仍有待播放的数据。 */
+bool audio_has_pending(void);
 
 /* 设置音量 0-100 */
 esp_err_t audio_set_volume(uint8_t volume);

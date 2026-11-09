@@ -31,6 +31,9 @@ bool     sfx_info(int index, char *name, size_t name_len, uint32_t *size, uint8_
 
 /* 播放控制：index=0 表示按预设规则（轮播）自动选择 */
 esp_err_t sfx_play(int index);
+esp_err_t sfx_play_timed(int index, uint8_t minutes);
+esp_err_t sfx_set_timer(uint8_t minutes);
+uint16_t sfx_timer_state(uint8_t *minutes);
 esp_err_t sfx_pause(void);
 esp_err_t sfx_resume(void);
 esp_err_t sfx_stop(void);

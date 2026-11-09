@@ -16,16 +16,14 @@
       <text class="command-label">设备回读</text>
       <text class="command-title" wx:if="{{command.status === 'pending'}}">等待月石校验</text>
       <text class="command-title" wx:elif="{{command.status === 'readback-pending'}}">已接收，正在回读</text>
-      <text class="command-title" wx:elif="{{command.status === 'applied'}}">今晚方案已应用</text>
+      <text class="command-title" wx:elif="{{command.status === 'applied'}}">{{appliedSettings ? '设备已确认，今晚方案已应用' : '回读结果待核对'}}</text>
       <text class="command-title" wx:elif="{{command.status === 'readback-timeout'}}">回读超时，原设置不变</text>
       <text class="command-title" wx:elif="{{command.status === 'readback-mismatch'}}">回读不一致，原设置不变</text>
       <text class="command-title" wx:else>月石未接受本次候选</text>
-      <text class="command-copy" wx:if="{{appliedSettings}}">月石回读一致 · 仅今晚有效</text>
-      <text class="command-copy" wx:else>等待设备确认。</text>
       <button hover-class="none" wx:if="{{command.status === 'readback-timeout' || command.status === 'readback-mismatch'}}" class="secondary-button reconcile" bindtap="reconcile">重新核对设备</button>
     </view>
 
-    <button hover-class="none" wx:if="{{!command}}" class="primary-button apply-button" disabled="{{applying}}" bindtap="apply">{{applying ? '正在发送' : '确认应用'}}</button>
+    <button hover-class="none" wx:if="{{!command && candidate.candidateId}}" class="primary-button apply-button" disabled="{{applying}}" bindtap="apply">{{applying ? '正在确认' : fromCalibration ? '推送到月石' : '确认应用'}}</button>
     <button hover-class="none" class="secondary-button manual-button" bindtap="openManualSettings">手动设置</button>
   </block>
 

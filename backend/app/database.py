@@ -940,6 +940,9 @@ def create_device_command(
     """Persist a command until the physical device acknowledges it."""
     if not device_id or not command_type or not isinstance(payload, dict):
         raise ValueError("device_id, command_type and object payload are required")
+    manual_ttl_limits = {"set_sound": 10, "set_light": 10, "vibration_test": 5}
+    manual_limit = manual_ttl_limits.get(command_type)
+    ttl = max(1, min(int(ttl_seconds), manual_limit)) if manual_limit else max(30, min(int(ttl_seconds), 86400))
     now = _now()
     idempotency_key = idempotency_key or gen_id("cmd-idem")
     conn = get_conn()
@@ -959,7 +962,7 @@ def create_device_command(
                 int(expected_config_version or 0),
                 idempotency_key,
                 now,
-                now + max(30, min(int(ttl_seconds), 24 * 60 * 60)),
+                now + ttl,
             ),
         )
         conn.commit()
