@@ -51,7 +51,7 @@ typedef struct {
     uint8_t                sha[32];  /* 目标 sha256 */
     mbedtls_sha256_context sha_ctx;  /* 流式 sha256 */
     int                    seq;      /* 期望下一帧 seq（<256 用 u8 回绕比较） */
-    char                   version[16]; /* 目标固件版本 */
+    char                   version[32]; /* 与 ESP-IDF 应用版本字段同宽 */
     bool                   active;
 } ota_state_t;
 
