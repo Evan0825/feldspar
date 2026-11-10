@@ -1,0 +1,202 @@
+{
+  "version": "2026-11-10.1",
+  "sources": {
+    "knowledge": ["月石 AI 知识库说明", ""],
+    "project": ["月石项目说明", "https://github.com/Evan0825/feldspar/blob/b0b571b/docs/PROJECT.md"],
+    "readme": ["月石工程与验收说明", "https://github.com/Evan0825/feldspar/blob/b0b571b/README.md"],
+    "hardware": ["月石硬件与接线说明", "https://github.com/Evan0825/feldspar/blob/b0b571b/docs/HARDWARE.md"],
+    "protocol": ["月石设备与云端协议", "https://github.com/Evan0825/feldspar/blob/b0b571b/docs/DEVELOPMENT_CONTRACT.md"],
+    "feature": ["结构化特征校验源码", "https://github.com/Evan0825/feldspar/blob/b0b571b/backend/app/audio/feature_contract.py"],
+    "dsp": ["端侧声学特征源码", "https://github.com/Evan0825/feldspar/tree/b0b571b/firmware/components/acoustic_features"],
+    "mqtt": ["实时音频与 MQTT 源码", "https://github.com/Evan0825/feldspar/blob/b0b571b/backend/app/mqtt_service.py"],
+    "config": ["模型与测试配置源码", "https://github.com/Evan0825/feldspar/blob/b0b571b/backend/app/config.py"],
+    "reports": ["睡眠报告与解读接口", "https://github.com/Evan0825/feldspar/blob/b0b571b/backend/app/api/agent.py"],
+    "metrics": ["睡眠数据聚合源码", "https://github.com/Evan0825/feldspar/blob/b0b571b/backend/app/database.py"],
+    "stage": ["七晚采集与校准规则", "https://github.com/Evan0825/feldspar/blob/b0b571b/firmware/miniprogram-latest/domain/personal-strategy.js"],
+    "plans": ["候选方案与确认源码", "https://github.com/Evan0825/feldspar/blob/b0b571b/backend/app/agent/candidates.py"],
+    "guard": ["设备停止保护源码", "https://github.com/Evan0825/feldspar/tree/b0b571b/firmware/components/actuation_guard"],
+    "evidence": ["月石创新证据矩阵", "https://github.com/Evan0825/feldspar/blob/b0b571b/docs/EVIDENCE.md"],
+    "bringup": ["样机联调记录", "https://github.com/Evan0825/feldspar/blob/b0b571b/validation/20261107-hardware-bringup/README.md"],
+    "reproduce": ["月石复现说明", "https://github.com/Evan0825/feldspar/blob/b0b571b/docs/REPRODUCE.md"],
+    "style": ["月石小程序与数据展示规范", "https://github.com/Evan0825/feldspar/blob/b0b571b/docs/ui-style-preferences.md"],
+    "model": ["v5 INT8 鼾声模型卡", "https://github.com/snoozekinpin/snoring-ml-training/blob/58ae1312ae36082dfea239ce57f013a3a61e32eb/output/v5/deliverables/model_card.md"],
+    "pipeline": ["v5 训练流水线说明", "https://github.com/snoozekinpin/snoring-ml-training/blob/58ae1312ae36082dfea239ce57f013a3a61e32eb/v5/README.md"],
+    "training-report": ["酣眠鼾声模型实现报告", ""],
+    "policy": ["纯声音鼾声评级与干预策略 V1（评审稿）", ""],
+    "loudness": ["Vena 等，鼾声响度的生理决定因素（2024）", "https://pubmed.ncbi.nlm.nih.gov/37879037/"],
+    "aec": ["乐鑫 ESP-FAQ，声学回声消除", "https://docs.espressif.com/projects/esp-faq/en/latest/application-solution/audio-development-framework.html"],
+    "calibration": ["scikit-learn 概率标定文档", "https://scikit-learn.org/stable/modules/calibration.html"],
+    "aasm": ["AASM 成人阻塞性睡眠呼吸暂停诊断指南", "https://pmc.ncbi.nlm.nih.gov/articles/PMC5337595/"],
+    "nih": ["美国 NHLBI，睡眠呼吸暂停症状", "https://www.nhlbi.nih.gov/health/sleep-apnea/symptoms"],
+    "tflm": ["TensorFlow Lite Micro 项目文档", "https://github.com/tensorflow/tflite-micro"],
+    "v4-report": ["酣眠鼾声模型 v4 加强训练报告", ""],
+    "v31-report": ["酣眠 v3.1 模型训练加强报告", ""],
+    "bandit": ["Thompson Sampling 候选逻辑源码", "https://github.com/Evan0825/feldspar/blob/b0b571b/backend/app/agent/bandit.py"],
+    "self-check": ["设备自检和配网实现", "https://github.com/Evan0825/feldspar/tree/b0b571b/firmware/miniprogram-latest/pages/setup"],
+    "auth": ["微信登录与绑定接口", "https://github.com/Evan0825/feldspar/blob/b0b571b/backend/app/api/auth.py"]
+  },
+  "entries": [
+    {
+      "id": "assistant", "title": "AI 的定义与职责", "status": "产品定义",
+      "terms": ["你是谁", "你是什么", "你能做什么", "ai助手", "月石ai", "人工智能的定义", "ai如何工作", "ai怎么工作"],
+      "text": "我是月石的 AI 助手。产品问答会先检索月石资料及相关文献，再依据命中的内容回答并给出来源。查看个人睡眠时，我解释已有记录、数据质量和变化趋势，并辅助理解温和提醒方案。个人记录和项目知识分别处理。AI 不做医疗诊断，聊天不会直接控制设备或启用自动提醒。",
+      "sources": ["knowledge", "project", "stage"]
+    },
+    {
+      "id": "product", "title": "月石是什么与整体工作原理", "status": "当前工程设计",
+      "terms": ["月石是什么", "什么是月石", "什么是feldspar", "非接触式", "月石怎么工作", "月石工作原理", "设备怎么工作", "产品原理", "系统架构", "工作原理"],
+      "text": "月石是面向家庭鼾声困扰的睡眠辅助设备，由床头主机、枕下有线振动片和微信小程序组成。床头麦克风采集环境声音，设备提取声学特征，经质量与连续性检查后形成工程观察。小程序展示记录，并通过设备回读确认手动控制。当前工程候选的自动提醒默认关闭，现有记录用于趋势观察。",
+      "sources": ["project", "readme", "evidence"]
+    },
+    {
+      "id": "hardware", "title": "设备硬件与感知范围", "status": "当前候选",
+      "terms": ["硬件", "esp32", "传感器", "麦克风", "雷达", "摄像头", "血氧", "心率", "体位", "谁在打鼾", "配件", "振动片", "枕下"],
+      "text": "当前候选以 ESP32-S3 为主控，使用一支 I²S 麦克风，配有枕下有线振动片、扬声器与夜灯。首轮候选不依赖雷达、摄像头或第二支麦克风，也没有血氧、心率或体位的实测依据。单麦声学候选无法可靠区分同睡者的声音归属。",
+      "sources": ["hardware", "readme", "evidence"]
+    },
+    {
+      "id": "features", "title": "当前端侧 DSP 与结构化上报", "status": "代码与合成测试",
+      "terms": ["dsp", "fft", "rms", "自相关", "频谱", "声学特征", "怎么识别鼾声", "判断打鼾", "判断鼾声", "鼾声检测", "鼾声识别", "结构化特征", "feldspar-features-v1", "算法原理"],
+      "text": "当前端侧观察链按约一秒的 PCM 窗口计算声学统计量，例如数字电平、频带能量占比及周期性线索。上行携带会话、序列、时钟、特征与质量位。云端检查连续性后才给出工程观察；热身、削波、缺口或设备自噪会影响可用性。结构化特征通道只上传统计量，不直接产生晨报事件或触发执行器。",
+      "sources": ["dsp", "feature", "protocol"]
+    },
+    {
+      "id": "quality", "title": "可分析性、候选证据与等级", "status": "现行规则及历史设计",
+      "terms": ["数据质量", "s0", "s3", "鼾声评级", "鼾声等级", "候选鼾声", "置信度", "规则分值", "误报", "削波", "数据缺失", "未知"],
+      "text": "应先判断采样是否可分析，再判断是否存在疑似鼾声，最后才描述有效窗口中的候选持续程度。质量不足时保留未知，不能当作零鼾声。S0–S3 是工程观察分级，不是医学严重度；规则分值不是标定后的概率。声段、声音事件与提醒轮次各自计数，不能互换。",
+      "sources": ["feature", "policy", "calibration"]
+    },
+    {
+      "id": "noise", "title": "环境声与设备自噪", "status": "工程规则及文献",
+      "terms": ["自噪", "aec", "回声消除", "白噪音干扰", "白噪声干扰", "噪音干扰", "环境声", "声音误判", "播放时", "振动干扰"],
+      "text": "说话、咳嗽、风扇、扬声器播放和振动都可能干扰声学判断。当前工程链可用质量标志拒判受污染的窗口。回声消除效果还取决于有效参考信号、录放音硬件与参数；采用相关算法不能证明月石已经消除白噪声或振动干扰。",
+      "sources": ["policy", "feature", "aec"]
+    },
+    {
+      "id": "v5-deploy", "title": "v5 模型体积与端侧条件", "status": "研发候选，未集成当前固件",
+      "terms": ["v5", "cnn_v5_int8", "int8", "模型大小", "模型多大", "模型有多大", "放到端侧", "tflite", "logmel", "端侧模型", "端侧部署", "烧录模型", "模型占用"],
+      "text": "训练模型卡记录 cnn_v5_int8 的 TFLite 文件为 34,336 字节，25,745 个参数，激活内存估计 60,608 字节。输入为 16 kHz 音频生成的 61×30 量化 Log-Mel，1 秒窗、0.5 秒步长。模型在目标板上还需验证算子、真实 tensor arena、采样特征一致性、实时延迟与 Flash 预算；当前月石候选固件未集成 v5。",
+      "sources": ["model", "reproduce", "tflm"]
+    },
+    {
+      "id": "v5-results", "title": "v5 离线评估与跨来源表现", "status": "研究模型评估",
+      "terms": ["v5准确率", "v5效果", "模型评估", "准确率", "auc", "召回率", "跨集合", "跨来源", "误报率", "benchmark", "0.9977", "95%"],
+      "text": "v5 模型卡中，INT8 在 998 窗测试分区的 AUC 为 0.9977，阈值 0.806 下精确率 0.996、召回 0.963、误报率 0.004。同一阈值在独立来源的 bench 汇总中，AUC 0.863、召回 0.120。指标对应不同分区与口径，受数据来源变化影响，不能转述为现有设备准确率、临床效果或家庭真实表现。",
+      "sources": ["model", "training-report", "evidence"]
+    },
+    {
+      "id": "v5-training", "title": "v5 数据与训练方法", "status": "研究流水线",
+      "terms": ["怎么训练", "训练过程", "训练数据", "数据集", "yamnet", "蒸馏", "esc-50", "kaggle", "whltalent", "近重复", "阈值标定"],
+      "text": "v5 流水线对音频做波形近重复聚类和录音组划分，分别隔离训练、验证、标定、测试与 bench。用 YAMNet 辅助审核非测试片段的可疑标注，对照硬标签、蒸馏及模型宽度，最终选用 hard_w1 并对 INT8 导出做一致性检查。缺少受试者元数据，不能声称分区按受试者完全隔离。",
+      "sources": ["pipeline", "model", "training-report"]
+    },
+    {
+      "id": "model-roles", "title": "自研模型、豆包和 DeepSeek 的分工", "status": "云端测试及端侧候选",
+      "terms": ["deepseek", "豆包", "火山方舟", "云端模型", "两个模型", "模型搭配", "模型分工", "边缘和云端", "端云协同", "实时分析和晨报"],
+      "text": "当前设备侧以结构化声学观察为基线，自研 v5 是待接入的端侧识别候选。测试后端配置豆包 Seed 2.1 Lite 用于授权短音频分类，DeepSeek V4.1 Flash 用于文本问答和晨报解读。聊天模型不直接下发提醒指令。短音频链路已有合成联调，当前线上测试服务的真实设备音频上行仍待开启和验收。",
+      "sources": ["config", "mqtt", "reproduce"]
+    },
+    {
+      "id": "privacy", "title": "录音、结构化数据和授权", "status": "当前协议",
+      "terms": ["隐私", "录音", "偷听", "上传音频", "原始音频", "用户数据", "数据授权", "数据存储", "同睡者", "原始声音", "会上传"],
+      "text": "结构化特征通道上传声学摘要与质量标记，不上传整夜原始录音。另有短音频候选分析路径，需要环境开关及设备所有者的独立授权。派生事件可以入库，原始音频不写入该事件记录。AI 数据授权、短音频授权及声光提醒偏好各自独立，不能互相替代。",
+      "sources": ["protocol", "mqtt", "policy"]
+    },
+    {
+      "id": "sleep-report", "title": "睡眠报告、有效记录与响应", "status": "数据口径",
+      "terms": ["有效监测", "有效时长", "监测时长", "提醒次数", "后续响应", "响应率", "数据怎么看", "查看数据", "晨间反馈", "睡眠报告", "报告指标", "没有数据"],
+      "text": "有效监测时长描述有依据的采集覆盖，不等同于实际睡着时长。提醒次数按已有提醒记录统计；后续响应是记录到的后续变化或回执，不代表确定的翻身、治疗或因果效果。睡眠详情按所选日期展示，数据质量和缺口放在详情。没有依据的指标保持未知，晨间反馈用于补充体验和后续校准。",
+      "sources": ["metrics", "reports", "style"]
+    },
+    {
+      "id": "seven-nights", "title": "七晚采集、初步方案与校准", "status": "产品与代码规则",
+      "terms": ["七晚", "七晚采集", "七晚收集", "七晚完成", "收满七晚", "7晚采集", "7晚", "七天", "7天", "初步方案", "采集进度", "收集进度", "个性化", "校准", "手动推送", "方案生效"],
+      "text": "初步方案阶段按有依据的有效夜晚去重计数，累计至七晚后可查看候选建议。用户确认后手动推送，只有设备返回匹配版本的执行回读，才能确认生效。随后用新记录和晨间反馈迭代校准；七晚完成不会自动启动干预，离线、无数据和待确认分别显示。",
+      "sources": ["stage", "plans", "style"]
+    },
+    {
+      "id": "reminders", "title": "提醒策略和当前执行边界", "status": "现行偏好及历史方案",
+      "terms": ["温和干预", "提醒方式", "自动提醒", "提醒策略", "声光提醒", "l1", "l5", "档位升级", "只振动", "为什么振动"],
+      "text": "方案偏好把振动作为固定默认方式，用户可选择是否把声音、灯光纳入自动提醒。这个选择与手动助眠声、夜灯独立。历史评审稿把声学观察等级与提醒步骤分开，升级需要新证据和预算约束。当前固件自动提醒关闭，不能把历史组合档位写成已在家庭场景运行。",
+      "sources": ["policy", "stage", "evidence"]
+    },
+    {
+      "id": "connect", "title": "蓝牙配网、Wi-Fi 控制和确认", "status": "候选协议，真机需验收",
+      "terms": ["蓝牙", "wifi", "wi-fi", "配网", "断线", "离线", "外出", "远程控制", "回读", "ack", "怎么连接"],
+      "text": "近距离蓝牙可用于发现、绑定、配网和支持的手动控制；配网后可在设备、测试后端和 MQTT 都在线且能力已上报时走 Wi-Fi 云端命令。云端接收或排队不等于设备执行，需同一指令的回执和实际驱动状态。离线或固件未支持时，页面应说明不可用或待确认。",
+      "sources": ["protocol", "readme", "bringup"]
+    },
+    {
+      "id": "sound-light", "title": "手动助眠声、夜灯和定时关闭", "status": "候选协议",
+      "terms": ["定时关闭", "定时播放", "助眠声音", "助眠声", "播放声音", "音量", "夜灯", "呼吸灯", "灯光控制", "关闭声音"],
+      "text": "候选固件支持用户手动控制助眠声和夜灯。支持声音定时的设备可选择 15、30 或 60 分钟，定时由设备计时，到期停止；也可选择整晚。以设备返回的播放状态和剩余时间为准，旧固件未报告能力时不能承诺定时。全停会取消播放定时。",
+      "sources": ["protocol", "readme"]
+    },
+    {
+      "id": "stop", "title": "试振、停止保护和安全回读", "status": "候选逻辑与主机检查",
+      "terms": ["试振", "测试振动", "全停", "停止全部", "停止锁定", "按键", "安全保护", "恢复手动", "超时停止", "强度上限"],
+      "text": "设备详情的试振属于用户发起的有限时操作。候选使用停止锁定、强度和时长限制，长按设备实体键或执行全停会结束输出。只有收到匹配回读且输出关闭、锁定生效，才表示确认；恢复手动控制本身不会开始输出。温升、电流和物理停止延迟需实机测量。",
+      "sources": ["guard", "protocol", "bringup"]
+    },
+    {
+      "id": "updates", "title": "固件版本、本地模型与 OTA", "status": "候选与待验证",
+      "terms": ["固件版本", "版本同步", "本地模型", "上次同步", "远程升级", "ota", "烧录口", "更新固件", "固件更新", "回滚"],
+      "text": "固件版本、本地模型版本和上次同步时间对应不同的数据来源，缺失时不能猜测。OTA 依赖当前固件已经支持、网络可用、更新包与型号匹配，并应验证失败回滚。设备烧录口不可用并不能证明 OTA 已就绪；候选仍需实测升级中断、启动与回滚。",
+      "sources": ["protocol", "readme", "bringup"]
+    },
+    {
+      "id": "evidence-level", "title": "当前进度与证据等级", "status": "工程验收",
+      "terms": ["开发进度", "目前支持", "实机验证", "临床验证", "台架", "开源", "工程候选", "合成测试", "源代码", "目前做到哪"],
+      "text": "月石仓库提供固件、小程序、后端和测试源码。协议、状态机和部分声学计算有主机复现；样机记录只证明对应硬件、固件版本和现场步骤。真实家庭长期使用、自动提醒效果、临床效果与 OTA 回滚均需独立验证，不能用离线测试代替。",
+      "sources": ["evidence", "bringup", "readme"]
+    },
+    {
+      "id": "snore-loudness", "title": "鼾声音量与医学风险", "status": "外部研究",
+      "terms": ["鼾声音量", "响度", "鼾声越大", "打鼾越响", "分贝", "气道阻塞", "鼾声大", "鼾声响", "音量决定"],
+      "text": "研究发现鼾声响度受气道阻塞程度和呼吸驱动等因素共同影响，严重阻塞时也可能没有响亮鼾声。不能用声音大小推断疾病风险或决定提醒强度。未经声学校准的设备数字电平也不能直接当作跨设备可比的声压级。",
+      "sources": ["loudness", "policy"]
+    },
+    {
+      "id": "medical-limits", "title": "鼾声与睡眠呼吸暂停的边界", "status": "临床指南与科普",
+      "terms": ["睡眠呼吸暂停", "呼吸暂停", "osa", "ahi", "医疗诊断", "诊断", "疾病风险", "止鼾疗效", "憋醒", "白天困倦", "医疗器械", "能治打鼾"],
+      "text": "鼾声记录无法诊断或排除睡眠呼吸暂停，也不能计算可用于临床诊断的 AHI。AASM 指南建议由临床专业人员结合评估及适合的睡眠检查诊断。若反复被观察到呼吸停顿、憋醒，或白天持续困倦，可就医评估；月石只解释观察到的记录与趋势。",
+      "sources": ["aasm", "nih", "project"]
+    },
+    {
+      "id": "calibration-stats", "title": "得分、概率标定与风险口径", "status": "方法参考",
+      "terms": ["概率标定", "分值是不是概率", "分类概率", "统计口径", "阈值怎么设", "灵敏度", "校准概率"],
+      "text": "分类得分与真实发生概率是不同概念。概率标定需独立数据和相应评估，评估结论只适用于相近样本分布。月石的规则得分用于工程观察，v5 离线阈值用于对应实验，不表示某位用户的疾病风险或提醒成功率。",
+      "sources": ["calibration", "model", "feature"]
+    },
+    {
+      "id": "rag-definition", "title": "RAG 知识库的工作方式", "status": "AI 知识模块",
+      "terms": ["rag", "知识库", "检索增强", "知识怎么来的", "回答的依据", "文献来源", "根据什么回答"],
+      "text": "RAG 是检索增强生成。月石先按问题检索经过整理的项目资料、代码与文献摘要，再把少量相关条目交给文本模型生成回答，最后校验引用。资料不足时说明无法核实，模型暂不可用时可以显示已核对的条目。新增资料更新的是知识库，不需要重新训练模型权重。",
+      "sources": ["knowledge", "project", "reports"]
+    },
+    {
+      "id": "observation-rule", "title": "当前 S0–S3 工程规则如何计算", "status": "当前代码",
+      "terms": ["s0s3", "s0到s3", "s0s3怎么计算", "等级怎么计算", "分值怎么计算", "0.72", "30个窗口", "连续窗口", "结构化规则"],
+      "text": "现行只观察规则使用 16 kHz、每窗 16,000 个采样点。质量合格时，规则组合频带证据、周期性和相对电平，分值达到 0.72 记一个命中。连续 30 个有效窗口后，0 次为 S0，1–8 次为 S1，9–17 次为 S2，18 次及以上为 S3。缺窗、时钟异常和质量不足会中断连续积累。此逻辑始终禁止自动动作。",
+      "sources": ["feature", "dsp", "evidence"]
+    },
+    {
+      "id": "training-history", "title": "v3、v3.1、v4 与 v5 的演进", "status": "历史研发记录",
+      "terms": ["v3", "v31", "v4", "v4和v5", "训练历史", "模型演进", "旧模型", "老版本模型"],
+      "text": "v3.1 报告记录在早期数据上加入更多真实来源。v4 加强训练扩大了多来源音频，v5 进一步做波形近重复聚类、录音组隔离、标签审查、跨来源评估与 INT8 导出门槛。各版分区、样本和评估口径不同，不能把历史指标直接横比，也不能推断样机已刷入任一版模型。",
+      "sources": ["v31-report", "v4-report", "pipeline"]
+    },
+    {
+      "id": "candidate-learning", "title": "学习算法如何形成候选方案", "status": "代码参考，需人工确认",
+      "terms": ["thompson", "bandit", "beta后验", "多臂老虎机", "自动学习", "算法校准", "怎么学习", "优化方案"],
+      "text": "后端包含以 Thompson Sampling 维护离散参数候选的参考算法，每个选项用 Beta 分布表达不确定性，并结合反馈更新。候选建议、用户确认、下发和设备执行是不同状态。算法代码存在不代表已证明自动收敛到最优或已允许自动调整；当前应以新记录、晨间反馈和手动推送回读推进。",
+      "sources": ["bandit", "plans", "stage"]
+    },
+    {
+      "id": "setup", "title": "绑定、设备自检与未知状态", "status": "候选与实机分开",
+      "terms": ["怎么绑定", "微信登录", "设备自检", "自检失败", "麦克风未就绪", "枕下片未识别", "振动片未知", "配网失败", "设备找不到"],
+      "text": "先完成微信登录、近距离蓝牙发现和绑定，再给设备配网。自检使用设备回报的在线状态、麦克风和振动片信息；缺少新鲜回报时显示未知或待确认。旧固件或没有插拔检测的硬件可能无法确认振动片连接，现场手动试振只用于明确支持的联调流程，不能当作传感器回读。",
+      "sources": ["auth", "self-check", "bringup"]
+    }
+  ]
+}
