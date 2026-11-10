@@ -133,6 +133,7 @@ static void telemetry(const af_features_t *features) {
     cJSON_AddBoolToObject(cap,"pad_detection",false);
     cJSON_AddBoolToObject(cap,"cloud_light_control",true);
     cJSON_AddBoolToObject(cap,"cloud_sound_control",true);
+    cJSON_AddBoolToObject(cap,"short_sound_timer",true);
     cJSON_AddBoolToObject(cap,"cloud_vibration_test",true);
     uint8_t timer=0;
     uint16_t remaining=sfx_timer_state(&timer);
@@ -245,7 +246,7 @@ static const char *apply_manual_sound(const char *id, const cJSON *payload, cJSO
     while (index<sizeof(s_scenes)/sizeof(s_scenes[0]) && strcmp(scene->valuestring,s_scenes[index])) ++index;
     if (index==sizeof(s_scenes)/sizeof(s_scenes[0])) return "INVALID_SOUND_COMMAND";
     uint8_t minutes=0;
-    if (cJSON_IsNumber(timer) && (timer->valuedouble==15 || timer->valuedouble==30 || timer->valuedouble==60))
+    if (cJSON_IsNumber(timer) && (timer->valuedouble==1 || timer->valuedouble==15 || timer->valuedouble==30 || timer->valuedouble==60))
         minutes=(uint8_t)timer->valueint;
     else if (!cJSON_IsString(timer) || strcmp(timer->valuestring,"all-night")) return "INVALID_SOUND_COMMAND";
     bool stop=cJSON_IsFalse(playing), scene_patch=cJSON_HasObjectItem(patch,"scene");

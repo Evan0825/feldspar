@@ -13,6 +13,7 @@ static unsigned pending_polls, discarded_tails, done_events, drain_errors;
 static jmp_buf drained;
 static int64_t now_us;
 static unsigned stop_after_feeds;
+static int64_t timer_advance_us;
 int64_t esp_timer_get_time(void) { return now_us; }
 
 QueueHandle_t xQueueCreate(unsigned count,unsigned size) {
@@ -62,7 +63,7 @@ esp_err_t audio_flush(void) { return ESP_OK; }
 esp_err_t audio_feed(const uint8_t *data,size_t length) {
     (void)data;
     fed+=(unsigned)length;
-    if (stop_after_feeds && --stop_after_feeds == 0) now_us += 15LL * 60 * 1000000;
+    if (stop_after_feeds && --stop_after_feeds == 0) now_us += timer_advance_us;
     pending_polls=3;
     return ESP_OK;
 }
@@ -102,11 +103,15 @@ int main(void) {
     stalled_drain=false;
     unsigned before=started;
     assert(sfx_play_timed(1, 12)==ESP_ERR_INVALID_ARG);
-    assert(sfx_play_timed(1, 15)==ESP_OK);
-    stop_after_feeds=10; /* forces a loop through the short file before time runs out */
-    pump();
-    uint8_t minutes=99;
-    assert(sfx_timer_state(&minutes)==0 && minutes==0);
-    assert(started==before+1 && !sfx_is_playing() && discarded_tails==3);
+    const uint8_t supported[] = {15, 1};
+    for (unsigned i=0; i<sizeof(supported); ++i) {
+        assert(sfx_play_timed(1, supported[i])==ESP_OK);
+        timer_advance_us=(int64_t)supported[i] * 60 * 1000000;
+        stop_after_feeds=10; /* forces a loop through the short file before time runs out */
+        pump();
+        uint8_t minutes=99;
+        assert(sfx_timer_state(&minutes)==0 && minutes==0);
+        assert(started==before+i+1 && !sfx_is_playing() && discarded_tails==3+i);
+    }
     puts("SFX drains the natural tail and preserves stop and switching (host files only).");
 }

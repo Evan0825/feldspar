@@ -263,8 +263,14 @@ static void handle_control(const uint8_t *data, uint16_t len)
             if (len >= 5 && data[4] == 1 && used < (int)sizeof(reply)) {
                 uint8_t minutes;
                 uint16_t remaining = sfx_timer_state(&minutes);
-                snprintf(reply + used, sizeof(reply) - (size_t)used, ",%u,%u",
-                         (unsigned)minutes, (unsigned)remaining);
+                bool short_timer_fields = len >= 6 && data[5] == 1;
+                /* Older clients cannot parse a 1-minute timer value. */
+                if (minutes != 1 || short_timer_fields) {
+                    used += snprintf(reply + used, sizeof(reply) - (size_t)used, ",%u,%u",
+                                     (unsigned)minutes, (unsigned)remaining);
+                    if (short_timer_fields && used >= 0 && used < (int)sizeof(reply))
+                        snprintf(reply + used, sizeof(reply) - (size_t)used, ",1");
+                }
             }
         }
         ble_notify_data(reply);

@@ -1,5 +1,6 @@
 const services = require('../../services/index')
 const { runServiceErrorAction, toUserError } = require('../../domain/service-error')
+const STANDARD_TIMERS = [15, 30, 60, 'all-night']
 
 const previewTracks = {
   sleep: '/audio/sleep.mp3',
@@ -9,7 +10,7 @@ const previewTracks = {
 }
 
 Page({
-  data: { sound: null, volumeDraft: 0, status: null, controlAvailable: false, controlError: null, loading: true, loadError: null, actionError: null, phase: 'loading', syncing: false, previewPlaying: false, previewError: '', uploading: false, uploadProgress: 0, manualStopOnly: false, timerUnavailableText: '', timerLabel: '', canUpload: false, sceneIcons: { sleep: 'sleep', healing: 'healing', work: 'work', reading: 'reading' }, timers: [15, 30, 60, 'all-night'] },
+  data: { sound: null, volumeDraft: 0, status: null, controlAvailable: false, controlError: null, loading: true, loadError: null, actionError: null, phase: 'loading', syncing: false, previewPlaying: false, previewError: '', uploading: false, uploadProgress: 0, manualStopOnly: false, timerUnavailableText: '', timerLabel: '', canUpload: false, sceneIcons: { sleep: 'sleep', healing: 'healing', work: 'work', reading: 'reading' }, timers: STANDARD_TIMERS },
   onLoad() {
     // 订阅设备 BLE 主动上报：曲目自然播完/设备端切换时同步播放态
     if (services.device && typeof services.device.onDeviceEvent === 'function') {
@@ -61,7 +62,8 @@ Page({
       const canUpload = controlAvailable && status?.ble?.connected === true && typeof services.device.uploadSoundEffect === 'function'
       const volumeDraft = sound && !sound.playing && !sound.paused && sound.volume === 0
         ? sound.preferredVolume ?? 0 : sound?.volume ?? 0
-      this.setData({ sound, volumeDraft, status, controlAvailable, controlError, manualStopOnly, timerUnavailableText, canUpload, phase: sound ? 'data' : 'empty' })
+      const timers = sound?.shortTimerSupported || services.serviceMode === 'mock' ? [1, ...STANDARD_TIMERS] : STANDARD_TIMERS
+      this.setData({ sound, volumeDraft, status, controlAvailable, controlError, manualStopOnly, timerUnavailableText, canUpload, timers, phase: sound ? 'data' : 'empty' })
       if (sound) { this.preparePreviewSource(sound); this.startCountdown(sound, controlAvailable) }
     } catch (error) {
       this.setData({ sound: null, loadError: toUserError(error, '声音'), phase: 'error' })
@@ -257,6 +259,6 @@ function applySoundCommand(current, command) {
   }
   if (typeof command.playing === 'boolean') next.playing = command.playing
   if (command.volume !== undefined) next.volume = Math.max(0, Math.min(100, command.volume))
-  if ([15, 30, 60, 'all-night'].includes(command.timer)) next.timer = command.timer
+  if ([1, ...STANDARD_TIMERS].includes(command.timer)) next.timer = command.timer
   return next
 }

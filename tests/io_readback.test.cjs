@@ -3,7 +3,7 @@ const assert = require('node:assert/strict')
 const { createWxBleBridge } = require('../firmware/miniprogram-latest/services/real/ble-bridge')
 const id = 'haomian_sleep_abcdef'
 
-function setup({ mismatch=false, latched=false, effects=false, timers=false, rejectResume=false, onWrite } = {}) {
+function setup({ mismatch=false, latched=false, effects=false, timers=false, shortTimer=false, rejectResume=false, onWrite } = {}) {
   let notify
   const writes = []
   const state = { rgb: [0,0,0], volume: 0, effect: 0, index: 0, timer: 0, motor: 0 }
@@ -34,9 +34,10 @@ function setup({ mismatch=false, latched=false, effects=false, timers=false, rej
       if (bytes[0] === 0x26) { latched = true; state.motor = 0 }
       if (bytes[0] === 0x02 && !latched) state.motor = bytes[1]
       if (bytes[0] === 0x03) state.motor = 0
+      const shortCapability = shortTimer && bytes[5] === 1 ? ',1' : ''
       const lines = bytes[0] === 0x25 && rejectResume ? [`SAFETY,${token},error,HAPTIC,storage,0,0,0,1`]
         : [0x24,0x25,0x26].includes(bytes[0]) ? [`SAFETY,${token},ok,HAPTIC,ok,${state.motor?1:0},${state.motor},${state.motor?1000:0},${latched?1:0}`]
-        : bytes[0] === 0x27 ? [`IO,${token},${state.rgb.some(Boolean)?1:0},${state.rgb.join(',')},${state.volume},${state.index ? 1 : 0},${state.index}${extended}${timerReadback}`]
+        : bytes[0] === 0x27 ? [`IO,${token},${state.rgb.some(Boolean)?1:0},${state.rgb.join(',')},${state.volume},${state.index ? 1 : 0},${state.index}${extended}${timerReadback}${shortCapability}`]
           : bytes[0] === 0x34 ? (timers ? ['FILES,1', 'FILE,1,sleep,100,0','FILESEND'] : ['FILES,0','FILESEND'])
             : bytes[0] === 0x32 ? [`PLAYCMD,${bytes[1]}`] : []
       queueMicrotask(() => lines.forEach(line => notify({ deviceId: 'transport', characteristicId: 'FF04',
@@ -136,4 +137,21 @@ test('a Bluetooth trial from stop lock confirms both vibration start and stop', 
   assert.equal(result.started && result.stopped, true)
   assert.equal(result.physicalFeedback, false)
   assert.deepEqual(writes.map(bytes => bytes[0]), [0x24,0x25,0x02,0x24,0x03,0x24])
+})
+
+test('one-minute timer is sent and confirmed only on firmware that advertises it', async () => {
+  const recent = setup({ timers: true, shortTimer: true })
+  const current = (await recent.bridge.getIoState(id)).sound
+  assert.equal(current.shortTimerSupported, true)
+  const playing = (await recent.bridge.applySound(id, current, { ...current, scene: 'sleep', timer: 1 },
+    { playing: true, timer: 1 })).readback.sound
+  assert.equal(playing.timer, 1)
+  assert.equal(playing.timerRemainingSeconds, 60)
+  assert.deepEqual(recent.writes.find(bytes => bytes[0] === 0x32), [0x32, 1, 1])
+  const older = setup({ timers: true })
+  const oldState = (await older.bridge.getIoState(id)).sound
+  assert.equal(oldState.timerSupported, true)
+  await assert.rejects(older.bridge.applySound(id, oldState, { ...oldState, timer: 1 },
+    { playing: true, timer: 1 }), { code: 'CONTROL_UNSUPPORTED' })
+  assert.equal(older.writes.some(bytes => bytes[0] === 0x32), false)
 })

@@ -657,7 +657,7 @@ function createWxBleBridge(config = {}) {
     const response = waitForMessage(state, message => message.channel === 'data' &&
       parseIoReply(message, token) !== null, RESPONSE_TIMEOUT, '设备未提供控制回读')
     try {
-      await writeBytes(state, state.controlId, buildControlCommand(COMMANDS.IO_STATE, [token & 255, token >> 8, 1, 1]))
+      await writeBytes(state, state.controlId, buildControlCommand(COMMANDS.IO_STATE, [token & 255, token >> 8, 1, 1, 1]))
     } catch (error) {
       for (const reject of Array.from(state.disconnectRejectors)) reject(error)
       await response.catch(() => {})
@@ -1144,7 +1144,10 @@ function createWxBleBridge(config = {}) {
   async function applySound(deviceId, current, desired, patch = {}, checkIntent = beginManualIntent(deviceId)) {
     const timerChanged = Object.prototype.hasOwnProperty.call(patch, 'timer')
     const shouldStart = patch.playing === true || (patch.scene && current && current.playing)
-    const minutes = [15, 30, 60].includes(desired.timer) ? desired.timer : 0
+    const minutes = [1, 15, 30, 60].includes(desired.timer) ? desired.timer : 0
+    if ((timerChanged || shouldStart) && minutes === 1 && !current?.shortTimerSupported) {
+      throw bridgeError('CONTROL_UNSUPPORTED', '当前固件尚未支持 1 分钟定时')
+    }
     if ((timerChanged || shouldStart) && minutes && !current?.timerSupported) {
       throw bridgeError('CONTROL_UNSUPPORTED', '当前固件尚未支持设备定时')
     }

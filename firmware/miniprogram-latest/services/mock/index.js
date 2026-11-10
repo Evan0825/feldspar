@@ -155,7 +155,7 @@ function createMockServices() {
         }
         if (typeof command.playing === 'boolean') sound.playing = command.playing
         if (command.volume !== undefined) sound.volume = clamp(command.volume, 0, 100)
-        if ([15, 30, 60, 'all-night'].includes(command.timer)) sound.timer = command.timer
+        if ([1, 15, 30, 60, 'all-night'].includes(command.timer)) sound.timer = command.timer
         return delay(sound)
       },
       getLightState: () => delay(light),

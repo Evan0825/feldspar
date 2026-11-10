@@ -912,7 +912,7 @@ def update_device_sound(
             raise HTTPException(400, "volume 必须在 0-100")
     if "scene" in safe and safe["scene"] not in ("sleep", "healing", "work", "reading"):
         raise HTTPException(400, f"scene 非法: {safe['scene']}")
-    if "timer" in safe and safe["timer"] not in (15, 30, 60, "all-night"):
+    if "timer" in safe and (type(safe["timer"]) is bool or safe["timer"] not in (1, 15, 30, 60, "all-night")):
         raise HTTPException(400, f"timer 非法: {safe['timer']}")
     return {"device_id": device_id, "sound": set_sound_state(device_id, safe)}
 

@@ -20,7 +20,7 @@ function parseSafetyReply(message, requestId) {
 }
 
 function parseIoReply(message, requestId) {
-  if (!message || message.type !== 'IO' || !Array.isArray(message.fields) || ![8, 9, 11].includes(message.fields.length)) return null
+  if (!message || message.type !== 'IO' || !Array.isArray(message.fields) || ![8, 9, 11, 12].includes(message.fields.length)) return null
   const f = message.fields
   if (!f.every(value => /^\d+$/.test(value)) || Number(f[0]) !== requestId || !['0','1'].includes(f[1])) return null
   const n = f.map(Number)
@@ -29,9 +29,13 @@ function parseIoReply(message, requestId) {
   const light = { enabled: n[1] === 1, r: n[2], g: n[3], b: n[4] }
   if (n.length >= 9) light.mode = n[8] === 1 ? 'bedtime-breathe' : 'night-low'
   const sound = { volume: n[5], playing: n[6] === 1, paused: n[6] === 2, index: n[7] }
-  if (n.length === 11) {
-    if (![0, 15, 30, 60].includes(n[9]) || n[10] > n[9] * 60) return null
+  if (n.length >= 11) {
+    if (n.length === 12 && n[11] !== 1) return null
+    const shortTimerSupported = n[11] === 1
+    if ((!shortTimerSupported || n[9] !== 1) && ![0, 15, 30, 60].includes(n[9])) return null
+    if (n[10] > n[9] * 60) return null
     Object.assign(sound, { timerSupported: true, timer: n[9] || 'all-night', timerRemainingSeconds: n[10] })
+    if (shortTimerSupported) sound.shortTimerSupported = true
   }
   return { requestId, light, sound, physicalFeedback: false }
 }

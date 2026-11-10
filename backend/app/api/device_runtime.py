@@ -45,7 +45,7 @@ class SoundOutputIn(BaseModel):
     playing: bool
     paused: bool
     volume: int = Field(ge=0, le=100)
-    timer_minutes: Literal[0, 15, 30, 60]
+    timer_minutes: Literal[0, 1, 15, 30, 60]
     remaining_seconds: int = Field(ge=0, le=3600)
 
 
@@ -298,7 +298,7 @@ def create_sound_command(
         raise HTTPException(status_code=400, detail="INVALID_SOUND_VOLUME")
     if "scene" in patch and patch["scene"] not in ("sleep", "healing", "work", "reading"):
         raise HTTPException(status_code=400, detail="INVALID_SOUND_SCENE")
-    if "timer" in patch and patch["timer"] not in (15, 30, 60, "all-night"):
+    if "timer" in patch and (type(patch["timer"]) is bool or patch["timer"] not in (1, 15, 30, 60, "all-night")):
         raise HTTPException(status_code=400, detail="INVALID_SOUND_TIMER")
     current = {**get_sound_state(device_id), **patch}
     desired = {key: current[key] for key in ("playing", "volume", "scene", "timer")}

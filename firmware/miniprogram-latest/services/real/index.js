@@ -267,12 +267,13 @@ function withIoState(kind, preferences, io) {
   const color = actual.enabled
     ? (mode === 'night-low' && actual.r === actual.g && actual.g === actual.b ? 'white' : 'amber')
     : preferences.color
+  const presetTimer = preferences.timer === 1 && !actual.shortTimerSupported ? 15 : preferences.timer
   return { ...preferences, ...actual,
     ...(kind === 'light' ? { mode, color, modeName: mode === 'bedtime-breathe' ? '睡前呼吸灯' : '白光照明',
       brightness: actual.enabled ? Math.max(actual.r, actual.g, actual.b) : preferences.brightness,
       rgb: { r: actual.r, g: actual.g, b: actual.b } }
       : { preferredVolume: preferences.volume,
-        timer: actual.timerSupported ? (actual.playing || actual.paused ? actual.timer : preferences.timer) : 'all-night',
+        timer: actual.timerSupported ? (actual.playing || actual.paused ? actual.timer : presetTimer) : 'all-night',
         ...(actual.timerSupported ? { timerCheckedAt: Date.now() } : {}) }),
     confirmed: true, source: 'ble-driver', physicalFeedback: false }
 }
@@ -306,6 +307,7 @@ async function readControlState(id, kind, normalize) {
   if (hasFreshCloudOutput(runtime, kind)) {
     const output = runtime[`${kind}_output`]
     const actual = kind === 'sound' ? { ...output, timerSupported: true,
+      shortTimerSupported: runtime.capabilities.short_sound_timer === true,
       timer: output.timer_minutes || 'all-night', timerRemainingSeconds: output.remaining_seconds } : output
     return { ...withIoState(kind, state, { [kind]: actual }), source: 'cloud-driver',
       ...(kind === 'sound' ? { timerCheckedAt: Date.now() - Math.max(0, Number(runtime.age_seconds) || 0) * 1000 } : {}) }
@@ -585,7 +587,7 @@ function normalizeSound(input) {
     ...sound, scenes, scene: selected.id, sceneName: sound.sceneName || selected.name,
     trackName: sound.trackName || selected.trackName || selected.name,
     playing: Boolean(sound.playing), volume: Math.max(0, Math.min(100, numberOr(sound.volume, 50))),
-    timer: [15, 30, 60, 'all-night'].includes(sound.timer) ? sound.timer : 'all-night',
+    timer: [1, 15, 30, 60, 'all-night'].includes(sound.timer) ? sound.timer : 'all-night',
   }
 }
 
