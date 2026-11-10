@@ -30,6 +30,5 @@
 .safety-card { padding: 22rpx 26rpx; }
 .safety-card > .reconnect-copy:first-child { margin-top: 0; font-size: 23rpx; }
 .stop-button { margin-top: 16rpx; background: var(--danger-soft); color: var(--danger); border-radius: 18rpx; font-size: 29rpx; font-weight: 650; }
-.resume-button { margin-top: 12rpx; }
 .safety-help { display: inline-block; margin: 9rpx 0 0; padding: 0; background: transparent; color: var(--amber-deep); font-size: 22rpx; line-height: 2; }
 .safety-card .reconnect-error { margin: 7rpx 0 0; }

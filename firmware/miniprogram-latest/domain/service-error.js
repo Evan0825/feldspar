@@ -1,6 +1,6 @@
 const errorDefinitions = {
   DEVICE_STOPPED: {
-    title: '设备已停止', detail: '连接蓝牙并明确恢复手动控制后，才能重新开启输出。', retryable: false, action: 'retry',
+    title: '设备已停止', detail: '请连接蓝牙后重新点选要开启的功能，也可在「我的」恢复手动控制。', retryable: false, action: 'retry',
   },
   CONTROL_UNSUPPORTED: {
     title: '当前固件不支持此设置', detail: '请选择稳定灯光或整晚播放；自动干预尚未开放。', retryable: false, action: 'retry',

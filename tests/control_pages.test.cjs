@@ -81,13 +81,14 @@ test('home does not query output controls when the connected device cannot confi
   assert.deepEqual(toasts, [])
 })
 
-test('home routes a connected device in stop lock to safety controls instead of reporting offline', () => {
+test('home opens manual sound and light directly for a connected device in stop lock', () => {
   const { instance, routes, toasts } = page('home', {}, 'real')
   instance.data.status = {
-    ble: { connected: true }, controlAvailable: false, safety: { available: true, stopLatched: true },
+    ble: { connected: true }, controlAvailable: false, bleManualControlAvailable: true, safety: { available: true, stopLatched: true },
   }
   instance.openLight()
-  assert.deepEqual(routes, ['/pages/device/index'])
+  instance.openSound()
+  assert.deepEqual(routes, ['/pages/light/index', '/pages/sound/index'])
   assert.deepEqual(toasts, [])
 })
 
@@ -254,4 +255,17 @@ test('phone preview adjusts volume without sending a device command', () => {
   instance.setVolume({ detail: { value: 63 } })
   assert.equal(instance.data.volumeDraft, 63)
   assert.equal(instance._previewAudio.volume, 0.63)
+})
+
+test('the profile can explicitly restore manual control without opening device details', async () => {
+  let calls = 0
+  const { instance, routes, toasts } = page('profile', {
+    resumeManualControl: async () => { calls++; return { stopLatched: false, active: false } },
+  }, 'real')
+  instance.load = async () => {}
+  instance.data.status = { ble: { connected: true }, safety: { available: true, stopLatched: true } }
+  await instance.resumeManualControl()
+  assert.equal(calls, 1)
+  assert.deepEqual(routes, [])
+  assert.equal(toasts[0].title, '手动控制已恢复')
 })

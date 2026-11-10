@@ -10,10 +10,8 @@
 
   <view class="section-title" wx:if="{{status.bound}}">安全控制</view>
   <view class="card safety-card" wx:if="{{status.bound}}">
-    <view class="reconnect-copy">{{status.safety.available ? status.safety.stopLatched ? '手动控制已暂停' : '手动控制可用 · 自动提醒关闭' : '安全状态待确认'}}</view>
-    <button hover-class="none" class="stop-button" loading="{{safetyBusy}}" disabled="{{safetyBusy}}" data-kind="stop" bindtap="safetyAction">停止全部输出</button>
-    <button wx:if="{{status.safety.available && status.safety.stopLatched}}" hover-class="none" class="secondary-button resume-button" disabled="{{safetyBusy || !status.ble.connected}}" data-kind="resume" bindtap="safetyAction">恢复手动控制</button>
-    <text class="reconnect-copy" wx:if="{{status.safety.available && status.safety.stopLatched}}">{{status.ble.connected ? '恢复后可手动启动，当前输出保持停止。' : '连接蓝牙后可恢复手动控制。'}}</text>
+    <view class="reconnect-copy">{{status.safety.available ? status.safety.stopLatched ? '输出已全停' : '手动控制可用' : '安全状态待确认'}}</view>
+    <button hover-class="none" class="stop-button" loading="{{safetyBusy}}" disabled="{{safetyBusy}}" bindtap="safetyAction">停止全部输出</button>
     <button hover-class="none" class="safety-help" bindtap="showSafetyHelp">实体按键说明</button>
     <text class="reconnect-error" wx:if="{{safetyError}}">{{safetyError}}</text>
   </view>
@@ -44,7 +42,7 @@
     <view class="detail-row"><view><text>麦克风</text></view><text class="value {{status.microphones.status === 'ready' ? 'ok' : 'warn'}}">{{status.microphones.status === 'ready' ? '已就绪' : status.microphones.status === 'unknown' ? '待核验' : '需检查'}}</text></view>
     <view class="detail-row"><view><text>24G 毫米波雷达（可选）</text><text>用于在床与体动观测</text></view><text class="value {{status.radar.status === 'ready' ? 'ok' : 'warn'}}">{{status.radar.status === 'ready' ? '已就绪' : status.radar.status === 'not_installed' ? '未安装' : '待核验'}}</text></view>
   </view>
-  <button wx:if="{{status.cloudVibrationTestAvailable}}" hover-class="none" class="secondary-button" loading="{{vibrationTesting}}" disabled="{{vibrationTesting}}" bindtap="startVibrationTest">试振 2 秒</button>
+  <button wx:if="{{status.bleVibrationTestAvailable || status.cloudVibrationTestAvailable}}" hover-class="none" class="secondary-button" loading="{{vibrationTesting}}" disabled="{{vibrationTesting}}" bindtap="startVibrationTest">试振 2 秒</button>
   <text wx:if="{{vibrationMessage}}" class="state-copy">{{vibrationMessage}}</text>
   <button wx:if="{{status.bound}}" hover-class="none" class="secondary-button" bindtap="openCalibration">设备自检</button>
 

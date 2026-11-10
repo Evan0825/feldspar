@@ -14,7 +14,7 @@ const demoOptions = [
 ]
 
 Page({
-  data: { profile: null, avatar: '月', status: null, demos: null, options: demoOptions, activeState: '', demoMode: services.serviceMode === 'mock', loading: true, refreshing: false, loadError: null, actionError: null, phase: 'loading', syncing: false, authorizing: false, expandedSection: '', showDiagnostics: false },
+  data: { profile: null, avatar: '月', status: null, demos: null, options: demoOptions, activeState: '', demoMode: services.serviceMode === 'mock', loading: true, refreshing: false, loadError: null, actionError: null, phase: 'loading', syncing: false, resuming: false, authorizing: false, expandedSection: '', showDiagnostics: false },
   onShow() { this.load() },
   async load() {
     const preserveContent = this.data.phase === 'data' && Boolean(this.data.profile)
@@ -67,6 +67,19 @@ Page({
   },
   openPreferences() { wx.navigateTo({ url: '/pages/onboarding/index?edit=1' }) },
   openDevice() { wx.navigateTo({ url: '/pages/device/index' }) },
+  async resumeManualControl() {
+    if (this.data.resuming || !this.data.status?.ble?.connected) return
+    this.setData({ resuming: true, actionError: null })
+    try {
+      await services.device.resumeManualControl()
+      wx.showToast({ title: '手动控制已恢复', icon: 'success' })
+      await this.load()
+    } catch (error) {
+      this.setData({ actionError: toUserError(error, '恢复手动控制') })
+    } finally {
+      this.setData({ resuming: false })
+    }
+  },
   toggleSection(event) {
     const section = event.currentTarget.dataset.section
     if (!['ai', 'privacy'].includes(section)) return

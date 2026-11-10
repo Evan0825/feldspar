@@ -8,9 +8,8 @@
 
   <block wx:else>
     <state-banner wx:if="{{partialError}}" tone="warning" title="部分状态暂未同步" detail="{{partialError.detail}}" retryable="{{partialError.retryable}}" action="{{partialError.action}}" bindretry="retryDevice" bindaction="handleDeviceAction" />
-    <view class="hero-copy"><text class="hero-title">{{status.safety.available && status.safety.stopLatched ? '手动控制已暂停' : status.controlAvailable || status.cloudSoundAvailable && status.cloudLightAvailable ? '手动控制可用' : status.cloudSoundAvailable || status.cloudLightAvailable ? '部分控制可用' : '设备待就绪'}}</text></view>
+    <view class="hero-copy"><text class="hero-title">{{status.bleManualControlAvailable || status.controlAvailable || status.cloudSoundAvailable && status.cloudLightAvailable ? '手动控制可用' : status.cloudSoundAvailable || status.cloudLightAvailable ? '部分控制可用' : '设备待就绪'}}</text></view>
     <view class="pad-banner" wx:if="{{controlStatusPending && !(status.cloudLightAvailable && status.cloudSoundAvailable)}}">{{status.cloudLightAvailable ? '声音控制待设备确认。' : status.cloudSoundAvailable ? '夜灯控制待设备确认。' : '设备安全状态待确认，声音和夜灯暂不可用。'}}</view>
-    <view class="pad-banner" wx:elif="{{status.safety.available && status.safety.stopLatched}}" role="button" bindtap="openDevice">恢复手动控制 ›</view>
     <view class="pad-banner" wx:if="{{padNotice}}">{{padNotice}}</view>
 
     <view class="product-stage" aria-label="月石床头主机与枕下定向振动片" bindtap="openLive"><image src="/images/system-hero.png" mode="aspectFit" /></view>
@@ -26,8 +25,8 @@
     <view class="strategy-card strategy-empty" wx:else bindtap="openStrategy"><text>方案待同步</text><text class="arrow">›</text></view>
 
     <view class="control-grid">
-      <view role="button" aria-label="{{sound.playing ? '声音，正在播放' : '声音，未播放'}}" class="control-card {{sound.playing ? 'sound-active' : ''}} {{!status.controlAvailable && !status.cloudSoundAvailable ? 'disabled' : ''}}" bindtap="openSound"><image class="sound-icon" src="/images/ui/sound{{sound.playing ? '-active' : ''}}.png" mode="aspectFit" /><text>声音</text></view>
-      <view role="button" aria-label="{{light.enabled ? '夜灯，已开启' : '夜灯，未开启'}}" class="control-card {{light.enabled ? 'light-active' : ''}} {{!status.controlAvailable && !status.cloudLightAvailable ? 'disabled' : ''}}" bindtap="openLight"><image class="light-icon" src="/images/host-detail.png" mode="aspectFit" /><text>夜灯</text></view>
+      <view role="button" aria-label="{{sound.playing ? '声音，正在播放' : '声音，未播放'}}" class="control-card {{sound.playing ? 'sound-active' : ''}} {{!status.bleManualControlAvailable && !status.controlAvailable && !status.cloudSoundAvailable ? 'disabled' : ''}}" bindtap="openSound"><image class="sound-icon" src="/images/ui/sound{{sound.playing ? '-active' : ''}}.png" mode="aspectFit" /><text>声音</text></view>
+      <view role="button" aria-label="{{light.enabled ? '夜灯，已开启' : '夜灯，未开启'}}" class="control-card {{light.enabled ? 'light-active' : ''}} {{!status.bleManualControlAvailable && !status.controlAvailable && !status.cloudLightAvailable ? 'disabled' : ''}}" bindtap="openLight"><image class="light-icon" src="/images/host-detail.png" mode="aspectFit" /><text>夜灯</text></view>
     </view>
     <view class="shortcut-list">
       <view class="shortcut-row home-ai-row" bindtap="openAi"><image src="/images/ui/chat.png" mode="aspectFit" /><text>问 AI</text><text class="arrow">›</text></view>

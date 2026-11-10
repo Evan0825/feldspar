@@ -46,18 +46,15 @@ Page({
     }
   },
   retry() { return this.load() },
-  async safetyAction(event) {
-    if (this.data.safetyBusy) return
-    const stop = event.currentTarget.dataset.kind === 'stop'
-    const action = stop ? services.device.stopAllOutputs : services.device.resumeManualControl
-    if (typeof action !== 'function') return
+  async safetyAction() {
+    if (this.data.safetyBusy || typeof services.device.stopAllOutputs !== 'function') return
     this.setData({ safetyBusy: true, safetyError: '' })
     try {
-      await action.call(services.device)
-      wx.showToast({ title: stop ? '驱动停止已确认' : '手动控制已恢复', icon: 'success' })
+      await services.device.stopAllOutputs()
+      wx.showToast({ title: '驱动停止已确认', icon: 'success' })
       await this.load()
     } catch (error) {
-      this.setData({ safetyError: stop ? '停止结果未确认，请断开设备电源。' : '设备未确认恢复，请重新连接后核对。' })
+      this.setData({ safetyError: '停止结果未确认，请断开设备电源。' })
     } finally {
       this.setData({ safetyBusy: false })
     }
@@ -96,11 +93,11 @@ Page({
     wx.navigateTo({ url: `/pages/setup/index?forceWifi=1${deviceQuery}${suffix}` })
   },
   async startVibrationTest() {
-    if (this.data.vibrationTesting || !this.data.status?.cloudVibrationTestAvailable) return
+    if (this.data.vibrationTesting || !(this.data.status?.bleVibrationTestAvailable || this.data.status?.cloudVibrationTestAvailable)) return
     this.setData({ vibrationTesting: true, vibrationMessage: '等待设备确认' })
     try {
-      await services.device.startVibrationTest()
-      this.setData({ vibrationMessage: '设备已开始试振，约 2 秒' })
+      const result = await services.device.startVibrationTest()
+      this.setData({ vibrationMessage: result?.stopped ? '驱动已完成试振' : '设备已开始试振，约 2 秒' })
     } catch (error) {
       this.setData({ vibrationMessage: toUserError(error, '试振').title })
     } finally {
@@ -112,7 +109,7 @@ Page({
   },
   handleServiceAction(event) { return runServiceErrorAction(event.detail.action, () => this.retry(), wx) },
   showSafetyHelp() {
-    wx.showModal({ title: '实体按键', content: '短按切换灯光，长按 2 秒停止全部输出。停止后，通过蓝牙恢复手动控制。', showCancel: false, confirmColor: '#654617' })
+    wx.showModal({ title: '实体按键', content: '短按切换灯光，长按 2 秒停止全部输出。连接蓝牙后可直接再次手动操作。', showCancel: false, confirmColor: '#654617' })
   },
   showUpdateInfo(event) {
     const host = this.data.status?.host

@@ -44,6 +44,7 @@ test('BLE safety controls remain reachable during cloud network failure', async 
   assert.equal(status.ble.connected, true)
   assert.equal(status.cloudOnline, false)
   assert.equal(status.controlAvailable, false)
+  assert.equal(status.bleManualControlAvailable, true)
   assert.equal(status.safety.stopLatched, true)
   assert.equal(status.microphones.status, 'unknown')
   assert.equal((await api.device.resumeManualControl()).stopLatched, false)
@@ -264,4 +265,22 @@ test('real-time page shows fresh cloud acoustic windows separately from device s
   snapshot = await guardian.getSnapshot()
   assert.equal(snapshot.cloudRealtime.acoustic.label, '数据已延迟')
   assert.equal(snapshot.cloudRealtime.acoustic.validWindows, null)
+})
+
+test('explicit playback after all-stop uses the saved volume and preserves intentional mute', async () => {
+  for (const volume of [23, 0]) {
+    const api = services()
+    const request = wx.request
+    wx.request = options => {
+      if (options.method === 'GET' && options.url.endsWith('/sound')) {
+        options.success({ statusCode: 200, data: { sound: { volume, scene: 'sleep' } } })
+      } else {
+        request(options)
+      }
+    }
+    assert.equal((await api.device.getSoundState()).volume, 0)
+    const started = await api.device.updateSound({ playing: true })
+    assert.equal(started.playing, true)
+    assert.equal(started.volume, volume)
+  }
 })

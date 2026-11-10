@@ -54,12 +54,14 @@ Page({
     this.setData({ loading: true, loadError: null, actionError: null, phase: 'loading' })
     try {
       const [sound, status] = await Promise.all([services.device.getSoundState(), services.device.getStatus()])
-      const controlAvailable = Boolean(sound?.source === 'cloud-driver' ? status?.cloudSoundAvailable : status?.controlAvailable)
+      const controlAvailable = Boolean(sound?.source === 'cloud-driver' ? status?.cloudSoundAvailable : (status?.bleManualControlAvailable || status?.controlAvailable))
       const controlError = controlAvailable ? null : toUserError({ code: status?.safety?.stopLatched ? 'DEVICE_STOPPED' : status?.provisioned ? 'DEVICE_OFFLINE' : 'NOT_PROVISIONED' }, '声音')
       const manualStopOnly = (services.serviceMode === 'real' || sound?.source === 'ble-driver') && !sound?.timerSupported
       const timerUnavailableText = status?.ble?.connected ? '需更新设备固件' : '连接蓝牙后检查支持情况'
       const canUpload = controlAvailable && status?.ble?.connected === true && typeof services.device.uploadSoundEffect === 'function'
-      this.setData({ sound, volumeDraft: sound ? sound.volume : 0, status, controlAvailable, controlError, manualStopOnly, timerUnavailableText, canUpload, phase: sound ? 'data' : 'empty' })
+      const volumeDraft = sound && !sound.playing && !sound.paused && sound.volume === 0
+        ? sound.preferredVolume ?? 0 : sound?.volume ?? 0
+      this.setData({ sound, volumeDraft, status, controlAvailable, controlError, manualStopOnly, timerUnavailableText, canUpload, phase: sound ? 'data' : 'empty' })
       if (sound) { this.preparePreviewSource(sound); this.startCountdown(sound, controlAvailable) }
     } catch (error) {
       this.setData({ sound: null, loadError: toUserError(error, '声音'), phase: 'error' })
