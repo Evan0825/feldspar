@@ -1,0 +1,14 @@
+Moonstone / Feldspar V6 prototype enclosure
+Copyright 2026 Feldspar project contributors.
+
+The CAD source, enclosure STL files, reference mesh, render and original hardware
+documentation in this directory are licensed under CERN-OHL-P-2.0.
+Source and notices: https://github.com/Evan0825/feldspar/tree/v6-prototype/hardware/v6
+
+This enclosure incorporates work from the Feldspar prototype CAD. The V6
+modifications add side clips, a rear lift notch and a separate cable exit. On
+2026-11-13 the project packaged the V6 inputs, generator and geometry checks
+as a standalone source release.
+
+NumPy, SciPy, Manifold and Trimesh are installed from upstream and retain
+their own licenses. This notice grants no trademark permission.

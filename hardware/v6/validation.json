@@ -1,0 +1,60 @@
+{
+  "digital_checks": "PASS",
+  "parts": {
+    "upper": {
+      "size_mm": [
+        167.0,
+        137.0,
+        72.99999237060547
+      ],
+      "watertight": true,
+      "bodies": 1,
+      "sha256": "fb57170acb253be4367a16294b8b86547ef46185a20358aec1ce4200e6804f5a"
+    },
+    "base": {
+      "size_mm": [
+        167.0,
+        137.0,
+        29.5
+      ],
+      "watertight": true,
+      "bodies": 1,
+      "sha256": "2f7697a4d0f4ad5aecb4c12157b5fb644861f3b83875696ec788f4ac638c738a"
+    }
+  },
+  "measurements": {
+    "closed_collision_mm3": 8.702214826839896e-15,
+    "reference_button_boss_material_mm3": 334.356627461896,
+    "remaining_button_boss_material_mm3": 4.051234322683787e-08,
+    "clip_interference_at_lift_0.1_mm3": 0.0,
+    "clip_interference_at_lift_0.3_mm3": 0.030191020733860464,
+    "clip_interference_at_lift_0.5_mm3": 0.5365779429817157,
+    "clip_interference_at_lift_1_mm3": 1.9803237886597025,
+    "clip_interference_at_lift_1.5_mm3": 1.543704950841599,
+    "clip_interference_at_lift_2_mm3": 1.1415556180755624,
+    "clip_interference_at_lift_2.5_mm3": 0.00012717904297202963,
+    "clip_interference_at_lift_3_mm3": 0.0,
+    "clip_interference_at_lift_4_mm3": 0.0,
+    "clip_interference_at_lift_6_mm3": 0.0,
+    "clip_interference_at_lift_10_mm3": 0.0,
+    "clip_interference_at_lift_30_mm3": 0.0,
+    "stationary_lip_root_area_mm2": 540.0848993089644,
+    "unsupported_root_area_mm2": 3.6517941526259534e-07,
+    "microphone_passage_mm3": 0.0,
+    "button_passage_mm3": 0.0,
+    "tie_1_access_mm3": 0.0,
+    "tie_2_access_mm3": 0.0,
+    "tie_3_access_mm3": 0.0,
+    "tie_4_access_mm3": 0.0,
+    "tie_5_access_mm3": 0.0,
+    "tie_6_access_mm3": 0.0,
+    "main_base_mm3": 0.0,
+    "main_upper_mm3": 0.0,
+    "rear_right_base_mm3": 0.0,
+    "rear_right_upper_mm3": 0.0,
+    "front_right_base_mm3": 0.0,
+    "front_right_upper_mm3": 0.0,
+    "rear_base_mm3": 0.0,
+    "rear_upper_mm3": 0.0
+  }
+}

@@ -17,3 +17,18 @@ jobs:
       - run: python -m unittest discover -s backend/tests -v
       - run: python scripts/demo_features.py
       - run: python scripts/smoke_backend.py
+  hardware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install CAD dependencies
+        run: python -m pip install -r hardware/v6/cad/requirements.txt ruff==0.17.5
+      - name: Check CAD source
+        run: |
+          ruff format --check hardware/v6/cad
+          ruff check --select E,F,I --ignore E501 hardware/v6/cad
+      - name: Rebuild and validate V6 geometry
+        run: python hardware/v6/cad/build.py --output "$RUNNER_TEMP/moonstone-v6"

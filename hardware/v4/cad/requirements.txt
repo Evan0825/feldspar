@@ -1,2 +1,0 @@
-numpy==2.5.4
-manifold3d==3.5.4
