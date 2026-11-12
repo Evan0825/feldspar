@@ -4,9 +4,11 @@
 
 当前为工程联调候选，固件源码版本为 `1.0.4-dev.1109.1`。自动提醒关闭。首轮验收目标是让同一台样机完成手机发现、绑定、配网、手动输出与全停，并让每个结果对应设备回读和实物现象。真实夜间事件、晨报、长期运行和 OTA 回滚还需单独验证。
 
+复现 V4 工程样机请从 [V4 开源资料](hardware/v4/README.md) 开始。发布版本同时提供可编辑 CAD、8 个打印件、接线、选型和装配资料，以及配套的固件、原生小程序和后端。
+
 ## 代码基线与取舍
 
-本 README 以 `codex/moonstone-ui-preferences` 的 `df102f7` 为联调基线。对照 GitHub `main`，这个分支保留相同的设备固件，并包含较新的原生小程序、后端偏好兼容和相关回归检查。
+V4 发布随附的软件工程来自公开联调基线 `b0b571b`，包含设备固件、原生小程序、测试后端和对应的离线回归检查。版本号 `V4` 指外壳与机械装配版本。
 
 | 目录或来源 | 工程选择 | 理由 |
 | --- | --- | --- |
@@ -42,7 +44,7 @@
 需要 Git、Python 3.12、Node.js 20+、Clang。固件构建需要 ESP-IDF 5.4.1，小程序需要微信开发者工具。以下命令在 macOS 或 Linux shell 执行，Windows 可使用 WSL2 运行主机检查。
 
 ```sh
-git clone --branch codex/moonstone-ui-preferences https://github.com/Evan0825/feldspar.git
+git clone --branch v4-prototype https://github.com/Evan0825/feldspar.git
 cd feldspar
 python3 tests/run_checks.py
 python3.12 -m venv .venv
@@ -105,6 +107,6 @@ idf.py -B "$build_root/build" -D "SDKCONFIG=$build_root/sdkconfig" build
 
 2026-11-07 在本联调基线复跑通过后端测试 26 项、合成特征演示和后端烟雾检查。小程序 45 个 JS 文件通过语法检查，20 个 WXML 文件通过微信开发者工具离线编译。根据台架结果，候选补上扫描与重连的顺序处理，并在音效自然结束时等待缓冲中的尾部音频。ESP-IDF 5.4.1 默认与只观察配置均通过 ESP32-S3 构建，镜像均在 2 MB 应用分区内。小程序配网修正了默认蓝牙单包长度、安卓权限读取超时和旧固件重连误报。C 主机检查 8 组和 Node 测试 56 项通过。现装样机通过手机蓝牙、Mac 与安卓预览下发配网及自动重连。正式小程序真机微信登录与云端绑定已通过。设备自检回报、候选完整播放与全停、独立 Broker 和 OTA 回滚仍待实机验收。[样机联调记录](validation/20261107-hardware-bringup/README.md) [历史验证](docs/VALIDATION.md) [界面验证](validation/ui-interaction-20261028/README.md)
 
-仓库包含固件、小程序、后端、协议和可复现测试。项目自研代码按 Apache-2.0 授权，第三方保留各自许可。量产原理图与 PCB、生产镜像、真实录音和训练权重需另行管理。GitHub 仓库公开，写入由项目维护者管理。[许可证](LICENSE) [第三方说明](THIRD_PARTY_NOTICES.md) [贡献指南](CONTRIBUTING.md) [共同维护](COLLABORATION.md)
+固件、小程序、后端和其他自研软件按 Apache-2.0 授权。[V4 硬件资料](hardware/v4/README.md) 按 CERN-OHL-P-2.0 授权。两种许可均允许商用，第三方材料沿用各自许可。量产原理图与 PCB、生产镜像、真实录音和训练权重需另行管理。[软件许可证](LICENSE) [硬件许可证](hardware/v4/LICENSE) [第三方说明](THIRD_PARTY_NOTICES.md) [贡献指南](CONTRIBUTING.md)
 
 产品与参赛背景见 [项目介绍](docs/PROJECT.md) 和 [证据矩阵](docs/EVIDENCE.md)。界面改动遵循 [项目约定](AGENTS.md) 与 [UI 风格和交互偏好](docs/ui-style-preferences.md)，以 [确认图](docs/design/moonstone-ui-approved-20261028.png) 为视觉依据。
