@@ -4,6 +4,8 @@
 
 当前公开硬件为 **V6 两件轻扣外壳**。CAD、打印文件、接线和装配从 [V6 工程样机](hardware/v6/README.md) 开始。
 
+[项目图文资料](docs/materials/README.md)包括技术架构图、结构爆炸图、宣传海报和鼾声模型训练报告。
+
 | 模块 | 源码 |
 | --- | --- |
 | V6 硬件 | [CAD](hardware/v6/cad/) · [STL](hardware/v6/stl/) · [接线](hardware/v6/WIRING.md) |
@@ -31,4 +33,4 @@ python3.12 -m venv .venv
 
 ## 许可
 
-自研软件采用 [Apache-2.0](LICENSE)，V6 自研硬件采用 [CERN-OHL-P-2.0](hardware/v6/LICENSE)，均允许按条款商用。第三方依赖沿用各自许可。 [第三方说明](THIRD_PARTY_NOTICES.md) · [贡献指南](CONTRIBUTING.md)
+自研软件采用 [Apache-2.0](LICENSE)，V6 自研硬件采用 [CERN-OHL-P-2.0](hardware/v6/LICENSE)，项目原创图文采用 [CC BY 4.0](docs/materials/LICENSE)，均允许按条款商用。第三方内容沿用各自许可。 [第三方说明](THIRD_PARTY_NOTICES.md) · [贡献指南](CONTRIBUTING.md)

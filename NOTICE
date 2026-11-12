@@ -3,5 +3,6 @@ Copyright 2026 Feldspar project contributors.
 
 Self-authored software and its documentation are offered under Apache-2.0, as authorized by the project owner on 2026-10-27.
 The V6 hardware design and its documentation are offered under CERN-OHL-P-2.0. See hardware/v6/NOTICE and hardware/v6/LICENSE.
+Original project illustrations and report content in docs/materials are offered under CC BY 4.0. See docs/materials/README.md for attribution and scope.
 Third-party exceptions are described in THIRD_PARTY_NOTICES.md.
 Trademarks and product names are not licensed by Apache-2.0.
