@@ -106,7 +106,7 @@ pre.mermaid{background:var(--surface);border:1px solid var(--line);border-radius
 
 <div class="wrap">
 <header class="masthead">
-<p>本报告记录 2026 年 9 月的 v5 鼾声模型研究。模型尚未集成到 V6 公开固件。报告正文与自制图表采用 <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>。</p>
+<p>本报告记录 2026 年 9 月的 v5 鼾声模型研究。模型尚未集成到 V6 公开固件。报告原创内容采用 <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans">CC BY-NC 4.0</a>，非商业教学与科研可免费使用，商用须另行授权。</p>
   <div class="eyebrow">SnoozMate · 酣眠 · 端侧鼾声识别模型 · 训练与验证报告 · 2026-09-05</div>
   <h1>床头主机上的鼾声识别模型：从数据到可发布固件</h1>
   <p class="lede">酣眠的床头主机（ESP32-S3，双麦克风）需要在本地实时识别连续鼾声、判断鼾声来自床的哪一侧，并把结构化事件而不是录音交给云端。本报告说明这个模型是怎样训练出来的：数据如何清洗与隔离、标签如何核验、网络如何选型与校准、结果如何在测试集、整夜流式基准与方向仿真中验证，以及模型如何带着完整的可追溯性交付到固件。</p>

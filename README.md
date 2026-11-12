@@ -33,4 +33,4 @@ python3.12 -m venv .venv
 
 ## 许可
 
-自研软件采用 [Apache-2.0](LICENSE)，V6 自研硬件采用 [CERN-OHL-P-2.0](hardware/v6/LICENSE)，项目原创图文采用 [CC BY 4.0](docs/materials/LICENSE)，均允许按条款商用。第三方内容沿用各自许可。 [第三方说明](THIRD_PARTY_NOTICES.md) · [贡献指南](CONTRIBUTING.md)
+自研软件采用 [Apache-2.0](LICENSE)，V6 自研硬件采用 [CERN-OHL-P-2.0](hardware/v6/LICENSE)，两者均允许按条款商用。项目补充图文采用 [CC BY-NC 4.0](docs/materials/LICENSE)，商用须另行授权。第三方内容沿用各自许可。 [第三方说明](THIRD_PARTY_NOTICES.md) · [贡献指南](CONTRIBUTING.md)
