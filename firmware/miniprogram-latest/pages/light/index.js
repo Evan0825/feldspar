@@ -12,7 +12,7 @@ Page({
     try {
       const [light, status] = await Promise.all([services.device.getLightState(), services.device.getStatus()])
       const cloudControl = light?.source === 'cloud-driver'
-      const controlAvailable = Boolean(cloudControl ? status?.cloudLightAvailable : status?.controlAvailable)
+      const controlAvailable = Boolean(cloudControl ? status?.cloudLightAvailable : (status?.bleManualControlAvailable || status?.controlAvailable))
       const controlError = controlAvailable ? null : toUserError({ code: status && status.provisioned ? 'DEVICE_OFFLINE' : 'NOT_PROVISIONED' }, '夜灯')
       this.setData({ light, brightnessDraft: light ? light.brightness : 5, status, cloudControl, controlAvailable, controlError, phase: light ? 'data' : 'empty' })
       if (refreshId === this._pulseRefreshId) this.schedulePulseRefresh(light)

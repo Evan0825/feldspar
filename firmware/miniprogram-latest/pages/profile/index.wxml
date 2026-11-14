@@ -13,6 +13,7 @@
     <view class="menu-card">
       <view class="menu-row" bindtap="openPreferences"><image src="/images/ui/person.png" mode="aspectFit" /><text class="menu-label">个性化偏好</text><text class="arrow">›</text></view>
       <view class="menu-row" bindtap="openDevice"><image src="/images/menu-family.png" mode="aspectFit" /><text class="menu-label">设备与家庭</text><text class="arrow">›</text></view>
+      <button wx:if="{{status.ble.connected && status.safety.available && status.safety.stopLatched}}" hover-class="none" class="menu-row share-row" loading="{{resuming}}" disabled="{{resuming}}" bindtap="resumeManualControl"><image src="/images/ui/check.png" mode="aspectFit" /><text class="menu-label">恢复手动控制</text><text class="arrow">›</text></button>
       <view class="menu-row" data-section="ai" bindtap="toggleSection"><image src="/images/menu-ai-data.png" mode="aspectFit" /><text class="menu-label">AI 与数据授权</text><text class="arrow">{{expandedSection === 'ai' ? '⌄' : '›'}}</text></view>
       <view class="section-detail" wx:if="{{expandedSection === 'ai'}}">
         <view class="authorization-row"><text>AI 读取睡眠资料</text><switch aria-label="AI 读取睡眠资料" color="#F9C747" checked="{{profile.aiDataAuthorized}}" disabled="{{authorizing}}" bindchange="toggleAiAuthorization" /></view>

@@ -586,12 +586,10 @@ def generate_chat_fallback(message: str, context: dict) -> dict:
             "safety_class": "urgent",
         }
 
-    if event_count == 0:
-        return _no_data_chat_guidance(message, question)
-
-    if any(word in question for word in ("吃药", "用药", "停药", "剂量", "诊断", "呼吸暂停")):
+    if (any(word in question for word in ("吃药", "用药", "停药", "剂量", "什么药", "药量"))
+            or (event_count and any(word in question for word in ("诊断", "呼吸暂停")))):
         return {
-            "answer": "这些记录不能用于诊断，也不能据此调整药物。可以把连续几晚的报告和白天感受整理后交给医生参考。",
+            "answer": "月石无法判断疾病或给出用药建议。可以向医生或药师咨询，如有可用记录，可一并提供作为参考。",
             "sections": {
                 "canExplain": "可以说明已记录的提醒次数、响应率和连续趋势。",
                 "cannotDetermine": "不能判断疾病，也不能给出用药或停药建议。",
@@ -600,6 +598,9 @@ def generate_chat_fallback(message: str, context: dict) -> dict:
             "answer_kind": "safety",
             "safety_class": "medical",
         }
+
+    if event_count == 0:
+        return _no_data_chat_guidance(message, question)
 
     if any(word in question for word in ("怎么办", "改善", "怎么做", "建议")):
         if total == 0:

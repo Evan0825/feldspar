@@ -23,6 +23,7 @@ from app.access import require_user_device_access
 from app.device_auth import require_device_key
 from app.agent.engine import SnoozMateAgent
 from app.agent.safety import validate_agent_config
+from app.agent.moonstone_knowledge import answer_question, is_project_question, retrieve
 from app.agent.candidates import (
     create_candidate, list_candidates, get_candidate,
     reject_candidate, generate_ai_candidate,
@@ -911,7 +912,7 @@ def update_device_sound(
             raise HTTPException(400, "volume 必须在 0-100")
     if "scene" in safe and safe["scene"] not in ("sleep", "healing", "work", "reading"):
         raise HTTPException(400, f"scene 非法: {safe['scene']}")
-    if "timer" in safe and safe["timer"] not in (15, 30, 60, "all-night"):
+    if "timer" in safe and (type(safe["timer"]) is bool or safe["timer"] not in (1, 15, 30, 60, "all-night")):
         raise HTTPException(400, f"timer 非法: {safe['timer']}")
     return {"device_id": device_id, "sound": set_sound_state(device_id, safe)}
 
@@ -969,6 +970,14 @@ async def ai_chat(
         raise HTTPException(400, "message 不能为空")
     require_user_device_access(authorization, body.device_id)
 
+    safety = generate_chat_fallback(body.message, {})
+    if safety["safety_class"] in {"urgent", "medical"}:
+        return {"status": "fallback", **safety, "source": "rule_based_safety_fallback"}
+
+    entries = retrieve(body.message)
+    if is_project_question(body.message, entries):
+        return await answer_question(body.message, entries)
+
     # 1. 拉取报告上下文
     night_id = get_latest_night_id(body.device_id) or get_night_id(body.device_id)
     summary, weekly = await asyncio.gather(
@@ -989,7 +998,7 @@ async def ai_chat(
         if m.get("role") in {"user", "assistant"} and m.get("content")
     ]
 
-    system_prompt = f"""你是酣眠 SnoozMate 的睡眠健康助手，正在和用户对话。
+    system_prompt = f"""你是月石的 AI 助手，解释用户已有睡眠记录和温和提醒方案。
 
 合规要求（必须严格遵守）：
 - 绝对不能说：守护、监测、引导翻身、止鼾、筛查、分级、AHI、治疗、提高

@@ -143,13 +143,13 @@ Page({
     wx.navigateTo({ url: `/pages/ai-plan/index?commandId=${this.data.activeCommand.commandId}` })
   },
   openTonight() { if (this.canOpenControl()) wx.navigateTo({ url: '/pages/tonight/index' }) },
-  openSound() { if (this.data.status?.cloudSoundAvailable || this.canOpenControl()) wx.navigateTo({ url: '/pages/sound/index' }) },
-  openLight() { if (this.data.status?.cloudLightAvailable || this.canOpenControl()) wx.navigateTo({ url: '/pages/light/index' }) },
+  openSound() { if (this.data.status?.bleManualControlAvailable || this.data.status?.cloudSoundAvailable || this.canOpenControl()) wx.navigateTo({ url: '/pages/sound/index' }) },
+  openLight() { if (this.data.status?.bleManualControlAvailable || this.data.status?.cloudLightAvailable || this.canOpenControl()) wx.navigateTo({ url: '/pages/light/index' }) },
   openReport() { wx.switchTab({ url: '/pages/report/index' }) },
   canOpenControl() {
     const safety = this.data.status?.safety
     if (safety?.available && safety.stopLatched) {
-      this.openDevice()
+      wx.showToast({ title: '设备已全停，请连接蓝牙后再操作', icon: 'none' })
       return false
     }
     if (this.data.status && this.data.status.controlAvailable) return true

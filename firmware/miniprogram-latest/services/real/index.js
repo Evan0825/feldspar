@@ -267,11 +267,14 @@ function withIoState(kind, preferences, io) {
   const color = actual.enabled
     ? (mode === 'night-low' && actual.r === actual.g && actual.g === actual.b ? 'white' : 'amber')
     : preferences.color
+  const presetTimer = preferences.timer === 1 && !actual.shortTimerSupported ? 15 : preferences.timer
   return { ...preferences, ...actual,
     ...(kind === 'light' ? { mode, color, modeName: mode === 'bedtime-breathe' ? '睡前呼吸灯' : '白光照明',
       brightness: actual.enabled ? Math.max(actual.r, actual.g, actual.b) : preferences.brightness,
       rgb: { r: actual.r, g: actual.g, b: actual.b } }
-      : { timer: actual.timerSupported ? (actual.playing || actual.paused ? actual.timer : preferences.timer) : 'all-night', ...(actual.timerSupported ? { timerCheckedAt: Date.now() } : {}) }),
+      : { preferredVolume: preferences.volume,
+        timer: actual.timerSupported ? (actual.playing || actual.paused ? actual.timer : presetTimer) : 'all-night',
+        ...(actual.timerSupported ? { timerCheckedAt: Date.now() } : {}) }),
     confirmed: true, source: 'ble-driver', physicalFeedback: false }
 }
 
@@ -296,17 +299,20 @@ async function readControlState(id, kind, normalize) {
     preferences = { ...preferences, brightness: local.brightness, mode: local.mode, color: local.color }
   }
   const state = normalize(preferences)
+  if (hasBleIo(id)) {
+    const actual = withIoState(kind, state, await deviceBridge.getIoState(id))
+    return { ...actual, syncPending: Boolean(cloudError || localPending), syncError: cloudError || (localPending ? local.syncError : null) }
+  }
   const runtime = await request('GET', `/api/v1/device/${id}/runtime/snapshot`, undefined, { cacheTtl: 1000 }).catch(() => null)
   if (hasFreshCloudOutput(runtime, kind)) {
     const output = runtime[`${kind}_output`]
     const actual = kind === 'sound' ? { ...output, timerSupported: true,
+      shortTimerSupported: runtime.capabilities.short_sound_timer === true,
       timer: output.timer_minutes || 'all-night', timerRemainingSeconds: output.remaining_seconds } : output
     return { ...withIoState(kind, state, { [kind]: actual }), source: 'cloud-driver',
       ...(kind === 'sound' ? { timerCheckedAt: Date.now() - Math.max(0, Number(runtime.age_seconds) || 0) * 1000 } : {}) }
   }
-  if (!hasBleIo(id)) return { ...state, confirmed: false, source: 'cloud-preference' }
-  const actual = withIoState(kind, state, await deviceBridge.getIoState(id))
-  return { ...actual, syncPending: Boolean(cloudError || localPending), syncError: cloudError || (localPending ? local.syncError : null) }
+  return { ...state, confirmed: false, source: 'cloud-preference' }
 }
 
 async function saveConfirmedControl(id, kind, desired, patch, result) {
@@ -581,7 +587,7 @@ function normalizeSound(input) {
     ...sound, scenes, scene: selected.id, sceneName: sound.sceneName || selected.name,
     trackName: sound.trackName || selected.trackName || selected.name,
     playing: Boolean(sound.playing), volume: Math.max(0, Math.min(100, numberOr(sound.volume, 50))),
-    timer: [15, 30, 60, 'all-night'].includes(sound.timer) ? sound.timer : 'all-night',
+    timer: [1, 15, 30, 60, 'all-night'].includes(sound.timer) ? sound.timer : 'all-night',
   }
 }
 
@@ -962,7 +968,8 @@ const device = {
     const runtimeFresh = Boolean(runtime.available && runtime.freshness === 'fresh')
     const cloudOnline = dev.device_status === 'online'
     const provisioned = dev.mode ? dev.mode !== 'unprovisioned' : Boolean(ble.known && ble.connected)
-    const bleControlAvailable = Boolean(ble.connected && provisioned && safety.available && !safety.stopLatched)
+    const bleManualControlAvailable = Boolean(ble.connected && provisioned && safety.available)
+    const bleControlAvailable = bleManualControlAvailable && !safety.stopLatched
     const cloudManualAvailable = Boolean(cloudOnline && provisioned && runtime.clock_valid === true &&
       runtime.stop_latched === false && !(safety.available && safety.stopLatched))
     const cloudLightAvailable = cloudManualAvailable && hasFreshCloudOutput(runtime, 'light')
@@ -995,6 +1002,9 @@ const device = {
         Boolean(cloudOnline && runtimeFresh && provisioned && runtime.stop_latched === false &&
           runtime.capabilities && runtime.capabilities.actuation_guard === 1 && runtime.pad_status === 'connected')),
       controlTransport: bleControlAvailable ? 'ble' : (cloudOnline ? 'cloud' : 'none'),
+      bleManualControlAvailable,
+      bleVibrationTestAvailable: bleManualControlAvailable && !safety.active &&
+        typeof deviceBridge.startVibrationTest === 'function',
       cloudLightAvailable,
       cloudSoundAvailable,
       cloudVibrationTestAvailable,
@@ -1066,6 +1076,8 @@ const device = {
 
   async startVibrationTest() {
     const id = getDeviceId()
+    if (deviceBridge?.getStatus(id).connected && typeof deviceBridge.startVibrationTest === 'function')
+      return deviceBridge.startVibrationTest(id)
     if (!(await this.getStatus()).cloudVibrationTestAvailable)
       throw serviceError('CONTROL_UNSUPPORTED', '月石暂未就绪，无法通过 Wi-Fi 试振')
     const queued = await request('POST', `/api/v1/device/${id}/vibration-test`, {
@@ -1187,10 +1199,13 @@ const device = {
 
   async updateSound(patch) {
     const id = getDeviceId()
+    const checkIntent = deviceBridge?.beginManualIntent?.(id)
     const current = await this.getSoundState()
-    const desired = normalizeSound({ ...current, ...(patch || {}) })
+    const volume = patch?.playing === true && current.source === 'ble-driver' && !current.playing && current.volume === 0
+      ? current.preferredVolume ?? current.volume : current.volume
+    const desired = normalizeSound({ ...current, volume, ...(patch || {}) })
     if (current.source !== 'cloud-driver' && hasBleIo(id)) {
-      const result = await deviceBridge.applySound(id, current, desired, patch || {})
+      const result = await deviceBridge.applySound(id, current, desired, patch || {}, checkIntent)
       return saveConfirmedControl(id, 'sound', desired, patch || {}, result)
     }
     if (!(await this.getStatus()).cloudSoundAvailable) throw serviceError('CONTROL_UNSUPPORTED', '月石暂未就绪，无法通过 Wi-Fi 播放声音')
@@ -1245,11 +1260,12 @@ const device = {
 
   async updateLight(patch) {
     const id = getDeviceId()
+    const checkIntent = deviceBridge?.beginManualIntent?.(id)
     const current = await this.getLightState()
     const desired = normalizeLight({ ...current, ...(patch || {}), color: (patch && patch.color) || current.color })
     const controlPatch = { ...(patch || {}), color: desired.color }
     if (current.source !== 'cloud-driver' && hasBleIo(id)) {
-      const result = await deviceBridge.applyLight(id, desired, controlPatch)
+      const result = await deviceBridge.applyLight(id, desired, controlPatch, checkIntent)
       // The deployed preference API stores the mode and accepts amber only.
       const preferencePatch = { ...controlPatch }
       if (preferencePatch.color === 'white') delete preferencePatch.color

@@ -140,6 +140,7 @@ function createWxBleBridge(config = {}) {
   const namePrefix = String(config.namePrefix || BLE_PROTOCOL.namePrefix).toUpperCase()
   const knownDevices = loadKnownDevices()
   const connections = new Map()
+  const stopVersions = new Map()
   const connectionAttempts = new Map()
   // 设备主动上报事件订阅者（SFXSTART/SFXDONE/SFXERR/MIC/WIFI,... 及断连）
   const eventListeners = new Set()
@@ -625,14 +626,16 @@ function createWxBleBridge(config = {}) {
     return response
   }
 
-  async function sendControl(deviceId, bytes) {
+  async function sendControl(deviceId, bytes, checkIntent) {
     const state = await ensureConnected(deviceId)
+    checkIntent?.()
     await writeBytes(state, state.controlId, bytes)
     return state
   }
 
-  async function readSafety(deviceId, command) {
+  async function readSafety(deviceId, command, checkIntent) {
     const state = await ensureConnected(deviceId)
+    checkIntent?.()
     const token = safetyRequestId = (safetyRequestId % 65535) + 1
     const response = waitForMessage(state, message => message.channel === 'data' &&
       parseSafetyReply(message, token) !== null, RESPONSE_TIMEOUT, '设备未确认安全控制状态')
@@ -654,7 +657,7 @@ function createWxBleBridge(config = {}) {
     const response = waitForMessage(state, message => message.channel === 'data' &&
       parseIoReply(message, token) !== null, RESPONSE_TIMEOUT, '设备未提供控制回读')
     try {
-      await writeBytes(state, state.controlId, buildControlCommand(COMMANDS.IO_STATE, [token & 255, token >> 8, 1, 1]))
+      await writeBytes(state, state.controlId, buildControlCommand(COMMANDS.IO_STATE, [token & 255, token >> 8, 1, 1, 1]))
     } catch (error) {
       for (const reject of Array.from(state.disconnectRejectors)) reject(error)
       await response.catch(() => {})
@@ -663,9 +666,46 @@ function createWxBleBridge(config = {}) {
     return parseIoReply(await response, token)
   }
 
-  async function requireManualControl(deviceId) {
-    const state = await readSafety(deviceId, COMMANDS.SAFETY_STATE)
-    if (state.stopLatched) throw bridgeError('DEVICE_STOPPED', '请先在设备页恢复手动控制')
+  function beginManualIntent(deviceId) {
+    const stopVersion = stopVersions.get(deviceId)
+    return () => {
+      if (stopVersions.get(deviceId) !== stopVersion) throw bridgeError('DEVICE_STOPPED', '本次操作已被全停取消')
+    }
+  }
+
+  async function resumeManualControl(deviceId, checkIntent = beginManualIntent(deviceId)) {
+    const state = await readSafety(deviceId, COMMANDS.SAFETY_RESUME, checkIntent)
+    if (state.stopLatched || state.active) throw bridgeError('SAFETY_REJECTED', '设备未确认恢复手动控制')
+    return state
+  }
+
+  async function prepareManualOutput(deviceId, checkIntent, requireIdle = false) {
+    const state = await readSafety(deviceId, COMMANDS.SAFETY_STATE, checkIntent)
+    if (requireIdle && state.active) throw bridgeError('SAFETY_REJECTED', '振动正在运行，请稍后再试')
+    if (state.stopLatched) await resumeManualControl(deviceId, checkIntent)
+  }
+
+  async function startVibrationTest(deviceId) {
+    const checkIntent = beginManualIntent(deviceId)
+    await prepareManualOutput(deviceId, checkIntent, true)
+    const stop = buildControlCommand(COMMANDS.MOTOR_STOP)
+    try {
+      await sendControl(deviceId, buildMotorCommand(50), checkIntent)
+    } catch (error) {
+      if (error.code !== 'DEVICE_STOPPED') await sendControl(deviceId, stop).catch(() => {})
+      throw error
+    }
+    const [started, stopped] = await Promise.allSettled([
+      readSafety(deviceId, COMMANDS.SAFETY_STATE),
+      delay(2000).then(() => sendControl(deviceId, stop)),
+    ])
+    if (stopped.status === 'rejected') throw bridgeError('STOP_UNCONFIRMED', '试振停止未确认')
+    const final = await readSafety(deviceId, COMMANDS.SAFETY_STATE)
+    if (final.active || final.percent !== 0) throw bridgeError('STOP_UNCONFIRMED', '试振停止未确认')
+    if (started.status !== 'fulfilled' || !started.value.active || started.value.percent !== 50) {
+      throw bridgeError('READBACK_MISMATCH', '设备未确认开始试振')
+    }
+    return { started: true, stopped: true, durationMs: 2000, transport: 'ble', physicalFeedback: false }
   }
 
   async function confirmIo(deviceId, predicate) {
@@ -1101,24 +1141,30 @@ function createWxBleBridge(config = {}) {
     return { connected: true, ssid, ip: completed.fields[0] || '' }
   }
 
-  async function applySound(deviceId, current, desired, patch = {}) {
+  async function applySound(deviceId, current, desired, patch = {}, checkIntent = beginManualIntent(deviceId)) {
     const timerChanged = Object.prototype.hasOwnProperty.call(patch, 'timer')
     const shouldStart = patch.playing === true || (patch.scene && current && current.playing)
-    const minutes = [15, 30, 60].includes(desired.timer) ? desired.timer : 0
+    const minutes = [1, 15, 30, 60].includes(desired.timer) ? desired.timer : 0
+    if ((timerChanged || shouldStart) && minutes === 1 && !current?.shortTimerSupported) {
+      throw bridgeError('CONTROL_UNSUPPORTED', '当前固件尚未支持 1 分钟定时')
+    }
     if ((timerChanged || shouldStart) && minutes && !current?.timerSupported) {
       throw bridgeError('CONTROL_UNSUPPORTED', '当前固件尚未支持设备定时')
     }
     const adjustTimer = timerChanged && !shouldStart && patch.playing !== false && current?.timerSupported && (current.playing || current.paused)
-    if (shouldStart || (Object.prototype.hasOwnProperty.call(patch, 'volume') && desired.volume > 0)) await requireManualControl(deviceId)
     let selectedIndex = 0
     if (shouldStart) {
       const files = await listSfx(deviceId)
       selectedIndex = matchSfxIndex(files, desired.scene)
       if (!selectedIndex) throw bridgeError('SCENE_NOT_AVAILABLE', '设备尚未安装所选场景音效')
     }
+    if (shouldStart || (Object.prototype.hasOwnProperty.call(patch, 'volume') && desired.volume > 0 && patch.playing !== false)) {
+      await prepareManualOutput(deviceId, checkIntent)
+    }
     const applied = []
-    if (Object.prototype.hasOwnProperty.call(patch, 'volume') || shouldStart) {
-      await sendControl(deviceId, buildVolumeCommand(desired.volume))
+    const adjustVolume = shouldStart || (patch.playing !== false && Object.prototype.hasOwnProperty.call(patch, 'volume'))
+    if (adjustVolume) {
+      await sendControl(deviceId, buildVolumeCommand(desired.volume), checkIntent)
       applied.push('volume')
     }
     if (patch.playing === false) {
@@ -1126,6 +1172,7 @@ function createWxBleBridge(config = {}) {
       applied.push('stop')
     }
     if (shouldStart) {
+      checkIntent()
       await playSfx(deviceId, selectedIndex, minutes)
       applied.push(`sfx:${selectedIndex}`)
     }
@@ -1136,7 +1183,7 @@ function createWxBleBridge(config = {}) {
     const readback = await confirmIo(deviceId, io =>
       (!(adjustTimer || shouldStart && minutes) || io.sound.timer === (minutes || 'all-night') &&
         (!minutes || io.sound.timerRemainingSeconds >= minutes * 60 - 3)) &&
-      (!Object.prototype.hasOwnProperty.call(patch, 'volume') && !shouldStart || io.sound.volume === desired.volume) &&
+      (!adjustVolume || io.sound.volume === desired.volume) &&
       (patch.playing !== false || !io.sound.playing && !io.sound.paused) &&
       (!shouldStart || io.sound.playing && io.sound.index === selectedIndex))
     return { applied, confirmed: true, readback, transport: 'ble', protocolVersion: BLE_PROTOCOL.version }
@@ -1148,9 +1195,8 @@ function createWxBleBridge(config = {}) {
     return value / 100
   }
 
-  async function applyLight(deviceId, desired, patch = {}) {
+  async function applyLight(deviceId, desired, patch = {}, checkIntent = beginManualIntent(deviceId)) {
     const breathing = desired.enabled && desired.mode === 'bedtime-breathe'
-    if (desired.enabled) await requireManualControl(deviceId)
     if (!Object.prototype.hasOwnProperty.call(patch, 'enabled')
       && !Object.prototype.hasOwnProperty.call(patch, 'brightness')
       && !Object.prototype.hasOwnProperty.call(patch, 'mode')
@@ -1169,10 +1215,11 @@ function createWxBleBridge(config = {}) {
     }
     if (breathing && !(await readIo(deviceId)).light.mode)
       throw bridgeError('CONTROL_UNSUPPORTED', '当前固件仅支持稳定夜灯')
+    if (desired.enabled) await prepareManualOutput(deviceId, checkIntent)
     const command = breathing
       ? buildControlCommand(COMMANDS.LIGHT_BREATHE, [rgb.r, rgb.g, rgb.b])
       : buildLightRgbCommand(rgb.r, rgb.g, rgb.b)
-    await sendControl(deviceId, command)
+    await sendControl(deviceId, command, desired.enabled ? checkIntent : undefined)
     const readback = await confirmIo(deviceId, io => io.light.enabled === Boolean(desired.enabled) &&
       io.light.r === rgb.r && io.light.g === rgb.g && io.light.b === rgb.b &&
       (breathing ? io.light.mode === 'bedtime-breathe' : io.light.mode !== 'bedtime-breathe'))
@@ -1371,12 +1418,11 @@ function createWxBleBridge(config = {}) {
     getSafetyState(deviceId) {
       return readSafety(deviceId, COMMANDS.SAFETY_STATE)
     },
-    async resumeManualControl(deviceId) {
-      const state = await readSafety(deviceId, COMMANDS.SAFETY_RESUME)
-      if (state.stopLatched || state.active) throw bridgeError('SAFETY_REJECTED', '设备未确认恢复手动控制')
-      return state
-    },
+    beginManualIntent,
+    resumeManualControl,
+    startVibrationTest,
     async stopAllOutputs(deviceId) {
+      stopVersions.set(deviceId, (stopVersions.get(deviceId) || 0) + 1)
       const state = await readSafety(deviceId, COMMANDS.STOP_ALL)
       if (!state.stopLatched || state.active) throw bridgeError('STOP_UNCONFIRMED', '停止结果待核对，请使用实体按键')
       return state

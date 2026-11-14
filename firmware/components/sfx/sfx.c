@@ -75,7 +75,7 @@ static bool s_timed_manual_session;
 
 static bool valid_timer(uint8_t minutes)
 {
-    return minutes == 0 || minutes == 15 || minutes == 30 || minutes == 60;
+    return minutes == 0 || minutes == 1 || minutes == 15 || minutes == 30 || minutes == 60;
 }
 
 static void set_timer_locked(uint8_t minutes, int64_t now)
